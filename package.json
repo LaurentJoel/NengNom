@@ -1,0 +1,42 @@
+{
+  "name": "neng-nom-backend",
+  "version": "1.0.0",
+  "description": "Neng-Nom AgriTech Platform Backend API",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r run dev",
+    "build": "pnpm -r run build",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint --ext .ts .",
+    "format": "prettier --write .",
+    "db:migrate": "cd packages/api && prisma migrate dev",
+    "db:seed": "cd packages/api && prisma db seed",
+    "db:reset": "cd packages/api && prisma migrate reset",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^8.4.1",
+    "@testcontainers/postgresql": "^10.8.2",
+    "@testcontainers/redis": "^10.8.2",
+    "@types/node": "^20.10.6",
+    "@typescript-eslint/eslint-plugin": "^6.17.0",
+    "@typescript-eslint/parser": "^6.17.0",
+    "@vitest/coverage-v8": "^1.1.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.1.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.4.2",
+    "ioredis": "5.10.1"
+  }
+}

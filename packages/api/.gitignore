@@ -1,0 +1,12 @@
+# API Package Configuration
+
+## Build outputs
+dist/
+*.tsbuildinfo
+
+## Testing
+.vitest/
+coverage/
+
+## Prisma
+.env.local

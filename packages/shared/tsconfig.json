@@ -1,0 +1,12 @@
+// tsconfig for shared package
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {},
+    "rootDir": ".",
+    "outDir": "dist"
+  },
+  "include": ["schemas", "types", "constants.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}

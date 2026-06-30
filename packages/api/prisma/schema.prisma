@@ -1,0 +1,302 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+enum UserRole {
+  FARMER
+  VET
+  LAB_TECH
+  ADMIN
+}
+
+enum ConsultationType {
+  CHAT
+  VOICE
+  VIDEO
+  EMERGENCY
+}
+
+enum ConsultationStatus {
+  PENDING
+  ACTIVE
+  CLOSED
+  CANCELLED
+}
+
+enum LabTestType {
+  DISEASE_DIAGNOSIS
+  PARASITOLOGY
+  HEMATOLOGY
+  BACTERIOLOGY
+  WATER_QUALITY
+  BIOSECURITY_AUDIT
+  FEED_QUALITY
+}
+
+enum LabStatus {
+  REQUESTED
+  SCHEDULED
+  TECHNICIAN_DISPATCHED
+  SAMPLES_COLLECTED
+  ANALYZING
+  RESULTS_READY
+  DELIVERED
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum PostCategory {
+  QUESTION
+  ALERT
+  TIP
+  SALE
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  phone        String?   @unique
+  passwordHash String    @map("password_hash")
+  role         UserRole
+  fullName     String    @map("full_name")
+  country      String    @default("CM") @db.Char(2)
+  region       String?
+  isVerified   Boolean   @default(false) @map("is_verified")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  farmerProfile  FarmerProfile?
+  vetProfile     VetProfile?
+  messages       Message[]
+  posts          CommunityPost[]
+  refreshTokens  RefreshToken[]
+  otpCodes       OtpCode[]
+
+  @@index([email])
+  @@index([role])
+  @@index([country, region])
+  @@map("users")
+}
+
+model FarmerProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farmName    String?  @map("farm_name")
+  farmType    String   @default("poultry") @map("farm_type")
+  animalCount Int      @default(0) @map("animal_count")
+  gpsLocation String?  @map("gps_location")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  consultations  Consultation[]
+  labRequests    LabRequest[]
+  farmRecords    FarmRecord[]
+  healthEvents   HealthEvent[]
+  aiSuggestions  AiSuggestion[]
+
+  @@index([userId])
+  @@map("farmer_profiles")
+}
+
+model VetProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber  String   @unique @map("license_number")
+  specialization String?
+  hourlyRate     Decimal  @default(0) @map("hourly_rate") @db.Decimal(10, 2)
+  isAvailable    Boolean  @default(true) @map("is_available")
+  rating         Float    @default(0)
+  reviewCount    Int      @default(0) @map("review_count")
+
+  consultations  Consultation[]
+  labReviews     LabRequest[]   @relation("VetLabReviews")
+
+  @@map("vet_profiles")
+}
+
+model Consultation {
+  id                  String             @id @default(uuid())
+  farmerId            String             @map("farmer_id")
+  farmer              FarmerProfile      @relation(fields: [farmerId], references: [id])
+  vetId               String?            @map("vet_id")
+  vet                 VetProfile?        @relation(fields: [vetId], references: [id])
+  type                ConsultationType
+  status              ConsultationStatus @default(PENDING)
+  symptomsDescription String?            @map("symptoms_description") @db.Text
+  mediaUrls           String[]           @map("media_urls")
+  prescription        String?            @db.Text
+  fee                 Decimal?           @map("fee") @db.Decimal(10, 2)
+  startedAt           DateTime?          @map("started_at")
+  endedAt             DateTime?          @map("ended_at")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  messages  Message[]
+
+  @@index([farmerId, status])
+  @@index([vetId, status])
+  @@index([createdAt(sort: Desc)])
+  @@map("consultations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  consultationId String       @map("consultation_id")
+  consultation   Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  senderId       String       @map("sender_id")
+  sender         User         @relation(fields: [senderId], references: [id])
+  content        String?      @db.Text
+  mediaUrl       String?      @map("media_url")
+  messageType    String       @default("text") @map("message_type")
+  sentAt         DateTime     @default(now()) @map("sent_at")
+
+  @@index([consultationId, sentAt])
+  @@map("messages")
+}
+
+model LabRequest {
+  id            String        @id @default(uuid())
+  farmerId      String        @map("farmer_id")
+  farmer        FarmerProfile @relation(fields: [farmerId], references: [id])
+  vetId         String?       @map("vet_id")
+  vet           VetProfile?   @relation("VetLabReviews", fields: [vetId], references: [id])
+  technicianId  String?       @map("technician_id")
+  status        LabStatus     @default(REQUESTED)
+  gpsLocation   String        @map("gps_location")
+  testType      LabTestType   @map("test_type")
+  priceQuoted   Decimal?      @map("price_quoted") @db.Decimal(10, 2)
+  scheduledAt   DateTime?     @map("scheduled_at")
+  resultUrl     String?       @map("result_url")
+  vetReview     String?       @map("vet_review") @db.Text
+  instructions  String?       @db.Text
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  @@index([farmerId, status])
+  @@index([status, scheduledAt])
+  @@map("lab_requests")
+}
+
+model FarmRecord {
+  id             String        @id @default(uuid())
+  farmerId       String        @map("farmer_id")
+  farmer         FarmerProfile @relation(fields: [farmerId], references: [id])
+  recordDate     DateTime      @map("record_date") @db.Date
+  animalCount    Int           @map("animal_count")
+  mortalityCount Int           @default(0) @map("mortality_count")
+  feedConsumedKg Float?        @map("feed_consumed_kg")
+  expenses       Decimal?      @map("expenses") @db.Decimal(10, 2)
+  revenue        Decimal?      @map("revenue") @db.Decimal(10, 2)
+  notes          String?       @db.Text
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  @@unique([farmerId, recordDate])
+  @@index([farmerId, recordDate(sort: Desc)])
+  @@map("farm_records")
+}
+
+model HealthEvent {
+  id           String        @id @default(uuid())
+  farmerId     String        @map("farmer_id")
+  farmer       FarmerProfile @relation(fields: [farmerId], references: [id])
+  eventType    String        @map("event_type")
+  animalGroup  String?       @map("animal_group")
+  productUsed  String?       @map("product_used")
+  eventDate    DateTime      @map("event_date") @db.Date
+  nextDueDate  DateTime?     @map("next_due_date") @db.Date
+  notes        String?       @db.Text
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  @@index([farmerId, nextDueDate])
+  @@index([nextDueDate])
+  @@map("health_events")
+}
+
+model AiSuggestion {
+  id            String        @id @default(uuid())
+  farmerId      String        @map("farmer_id")
+  farmer        FarmerProfile @relation(fields: [farmerId], references: [id])
+  modelUsed     String        @map("model_used")
+  promptContext String        @map("prompt_context") @db.Text
+  suggestion    String        @db.Text
+  wasHelpful    Boolean?      @map("was_helpful")
+  generatedAt   DateTime      @default(now()) @map("generated_at")
+
+  @@index([farmerId, generatedAt(sort: Desc)])
+  @@map("ai_suggestions")
+}
+
+model CommunityPost {
+  id          String       @id @default(uuid())
+  authorId    String       @map("author_id")
+  author      User         @relation(fields: [authorId], references: [id])
+  content     String       @db.Text
+  mediaUrls   String[]     @map("media_urls")
+  isAnonymous Boolean      @default(false) @map("is_anonymous")
+  category    PostCategory @default(QUESTION)
+  tags        String[]
+  likesCount  Int          @default(0) @map("likes_count")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@index([category, createdAt(sort: Desc)])
+  @@index([tags])
+  @@map("community_posts")
+}
+
+model DiseaseAlert {
+  id           String        @id @default(uuid())
+  reportedById String        @map("reported_by_id")
+  diseaseName  String        @map("disease_name")
+  region       String
+  country      String        @db.Char(2)
+  severity     AlertSeverity @default(MEDIUM)
+  isConfirmed  Boolean       @default(false) @map("is_confirmed")
+  reportedAt   DateTime      @default(now()) @map("reported_at")
+
+  @@index([country, region, severity])
+  @@index([reportedAt(sort: Desc)])
+  @@map("disease_alerts")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model OtpCode {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("otp_codes")
+}

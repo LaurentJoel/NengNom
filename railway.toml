@@ -1,0 +1,15 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "node dist/packages/api/src/server.js"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5
+
+[[services]]
+name = "neng-nom-api"
+environmentVariables = [
+  "NODE_ENV=production",
+  "PORT=3001"
+]

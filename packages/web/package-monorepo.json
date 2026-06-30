@@ -1,0 +1,37 @@
+/**
+ * Monorepo root package.json
+ * Defines workspaces and shared scripts
+ */
+
+{
+  "name": "neng-nom",
+  "version": "1.0.0",
+  "description": "Neng-Nom AgriTech Platform - Connecting African farmers with vets and lab services",
+  "private": true,
+  "workspaces": [
+    "packages/api",
+    "packages/web",
+    "packages/shared",
+    "packages/workers"
+  ],
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:watch": "pnpm -r test:watch",
+    "test:coverage": "pnpm -r test:coverage",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "cd packages/api && pnpm db:migrate",
+    "db:seed": "cd packages/api && pnpm db:seed",
+    "api:dev": "cd packages/api && pnpm dev",
+    "api:build": "cd packages/api && pnpm build",
+    "web:dev": "cd packages/web && pnpm dev",
+    "web:build": "cd packages/web && pnpm build",
+    "workers:start": "cd packages/workers && pnpm start",
+    "start:all": "concurrently \"pnpm api:dev\" \"pnpm web:dev\" \"pnpm workers:start\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.1"
+  }
+}

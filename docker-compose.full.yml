@@ -1,0 +1,103 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: projetemma-postgres-1
+    environment:
+      POSTGRES_USER: neng_nom
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: neng_nom
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neng_nom"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - neng-nom-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: projetemma-redis-1
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - neng-nom-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: projetemma-jaeger-1
+    ports:
+      - "4318:4318"
+      - "16686:16686"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - neng-nom-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: projetemma-api-1
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env.docker
+    environment:
+      CI: "true"
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://neng_nom:devpassword@postgres:5432/neng_nom
+      DIRECT_DATABASE_URL: postgresql://neng_nom:devpassword@postgres:5432/neng_nom
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_TTL: 900
+      JWT_REFRESH_TTL: 604800
+      CLOUDINARY_CLOUD_NAME: test_cloud_name
+      CLOUDINARY_API_KEY: test_api_key_12345
+      CLOUDINARY_API_SECRET: test_api_secret_67890
+      RESEND_API_KEY: re_test_resend_api_key_dev
+      AFRICAS_TALKING_API_KEY: test_api_key_africas_talking
+      AFRICAS_TALKING_USERNAME: test_username
+      FRONTEND_URL: http://localhost:3002
+      ALLOWED_ORIGINS: http://localhost:3002,http://localhost:3001
+      LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - neng-nom-network
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: projetemma-web-1
+    ports:
+      - "3002:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_API_TIMEOUT: 30000
+    depends_on:
+      - api
+    networks:
+      - neng-nom-network
+
+volumes:
+  postgres_data:
+
+networks:
+  neng-nom-network:
+    driver: bridge
