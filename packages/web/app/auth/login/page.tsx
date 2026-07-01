@@ -27,7 +27,8 @@ export default function LoginPage() {
 
     try {
       const loggedUser = await login(phone, form.password);
-      router.push(loggedUser.role === 'VET' ? '/dashboard/vet' : '/dashboard/farmer');
+      const dest = loggedUser.role === 'ADMIN' ? '/admin' : loggedUser.role === 'VET' ? '/dashboard/vet' : '/dashboard/farmer';
+      router.push(dest);
     } catch (err: any) {
       setError(err.message || 'Identifiants incorrects. Vérifiez votre numéro et mot de passe.');
     } finally {

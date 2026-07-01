@@ -7,6 +7,7 @@ import { healthEventsRoutes } from './modules/health-events/health-events.routes
 import { labRequestsRoutes } from './modules/lab-requests/lab-requests.routes.js'
 import { communityRoutes } from './modules/community/community.routes.js'
 import { aiRoutes } from './modules/ai/ai.routes.js'
+import { adminRoutes } from './modules/admin/admin.routes.js'
 
 export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(authRoutes)
@@ -17,4 +18,5 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(labRequestsRoutes)
   await fastify.register(communityRoutes)
   await fastify.register(aiRoutes)
+  await fastify.register(adminRoutes)
 }

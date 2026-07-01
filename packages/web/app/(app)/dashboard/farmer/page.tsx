@@ -74,15 +74,17 @@ export default function FarmerDashboard() {
 
     // Load stats from recent farm records
     const now = new Date();
-    farmRecordsService.getMonthlyStats(now.getFullYear(), now.getMonth() + 1).then((res) => {
-      if (res.success && res.data) {
-        const s = res.data as any;
-        setStats((prev) => ({
-          ...prev,
-          animalCount: s.avgAnimalCount || 0,
-          mortality: s.totalMortality || 0,
-        }));
-      }
+    Promise.all([
+      farmRecordsService.getMonthlyStats(now.getFullYear(), now.getMonth() + 1),
+      farmRecordsService.listRecords(1, 1),
+    ]).then(([monthRes, recentRes]) => {
+      const monthly = monthRes.success ? (monthRes.data as any) : null;
+      const recent = recentRes.success ? ((recentRes.data as any)?.records?.[0]) : null;
+      setStats((prev) => ({
+        ...prev,
+        animalCount: monthly?.avgAnimalCount || recent?.animalCount || 0,
+        mortality: monthly?.totalMortality ?? prev.mortality,
+      }));
     });
 
     // Load health reminders

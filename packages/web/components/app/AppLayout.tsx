@@ -21,6 +21,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { useLanguage } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth-context';
@@ -187,7 +188,10 @@ function NotificationsPanel() {
   const [items, setItems] = useState<NotifItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetched, setFetched] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!open || !user?.role || fetched) return;
@@ -232,8 +236,8 @@ function NotificationsPanel() {
         )}
       </button>
 
-      {open && (
-        <div className="fixed top-14 right-6 w-80 bg-white border border-sand-200 rounded-2xl shadow-elevation-lg overflow-hidden z-[200]">
+      {open && mounted && createPortal(
+        <div className="fixed top-14 right-6 w-80 bg-white border border-sand-200 rounded-2xl shadow-elevation-lg overflow-hidden z-[9999]">
           <div className="px-4 py-3 border-b border-sand-100 flex items-center justify-between">
             <span className="font-semibold text-sm text-neutral-900">Notifications</span>
             {count > 0 && (
@@ -276,7 +280,8 @@ function NotificationsPanel() {
               </Link>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

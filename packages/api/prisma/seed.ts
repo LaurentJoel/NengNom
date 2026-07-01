@@ -27,6 +27,22 @@ async function main() {
 
   const passwordHash = await bcrypt.hash('Password123!', 12)
 
+  // Create Admin
+  console.log('🔐 Creating admin user...')
+  await prisma.user.create({
+    data: {
+      email: 'admin@neng-nom.local',
+      phone: '+237600000001',
+      passwordHash,
+      role: 'ADMIN',
+      fullName: 'Admin Neng-Nom',
+      country: 'CM',
+      region: 'Centre',
+      isVerified: true,
+      isActive: true,
+    },
+  })
+
   // Create Farmers
   console.log('👨‍🌾 Creating farmers...')
   const farmerDouala = await prisma.user.create({
