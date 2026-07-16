@@ -38,7 +38,7 @@ export default function VetConsultationsScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={['#0C1A2E', '#0F2D4A', '#0E4272']}
+        colors={['#011C12', '#022C22', '#047857']}
         style={styles.header}
       >
         <SafeAreaView edges={['top']}>
@@ -84,13 +84,13 @@ export default function VetConsultationsScreen() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={refetch}
-            tintColor="#1D6FA4"
-            colors={['#1D6FA4']}
+            tintColor={colors.brand[600]}
+            colors={[colors.brand[600]]}
           />
         }
       >
         {isLoading ? (
-          <ActivityIndicator color="#1D6FA4" size="large" style={{ marginTop: 60 }} />
+          <ActivityIndicator color={colors.brand[600]} size="large" style={{ marginTop: 60 }} />
         ) : consultations.length === 0 ? (
           <EmptyState
             icon="medical-outline"
@@ -113,7 +113,7 @@ export default function VetConsultationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.sand[100] },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   header: {},
   headerInner: {
     paddingHorizontal: spacing[5],
@@ -131,8 +131,8 @@ const styles = StyleSheet.create({
   },
   tabActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
   tabText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
-  tabTextActive: { color: '#0E4272' },
-  wave: { height: 20, backgroundColor: colors.sand[100], borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  tabTextActive: { color: colors.brand[800] },
+  wave: { height: 20, backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   list: { flex: 1 },
   listContent: { padding: spacing[5], paddingTop: spacing[3] },
 });

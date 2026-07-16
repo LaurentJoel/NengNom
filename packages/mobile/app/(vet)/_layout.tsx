@@ -7,10 +7,11 @@ export default function VetLayout() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen name="index"         options={{ title: 'Accueil' }} />
-      <Tabs.Screen name="consultations" options={{ title: 'Consultations' }} />
-      <Tabs.Screen name="lab"           options={{ title: 'Labo' }} />
-      <Tabs.Screen name="profile"       options={{ title: 'Profil' }} />
+      <Tabs.Screen name="index"               options={{ title: 'Accueil' }} />
+      <Tabs.Screen name="consultations/index" options={{ title: 'Consultations' }} />
+      <Tabs.Screen name="lab"                 options={{ title: 'Labo' }} />
+      <Tabs.Screen name="community"           options={{ title: 'Communauté' }} />
+      <Tabs.Screen name="profile"             options={{ title: 'Profil' }} />
     </Tabs>
   );
 }

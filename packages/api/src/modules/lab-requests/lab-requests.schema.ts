@@ -6,7 +6,9 @@ import { UUIDSchema } from '@neng-nom/shared/schemas'
  */
 
 export const CreateLabRequestSchema = z.object({
-  gpsLocation: z.string().regex(/^-?\d+\.\d+,-?\d+\.\d+$/),
+  gpsLocation: z.string()
+    .regex(/^-?\d{1,3}\.\d+,\s*-?\d{1,3}\.\d+$/, 'GPS location must be decimal coordinates, e.g. 3.8480,11.5021')
+    .max(60),
   testType: z.enum([
     'DISEASE_DIAGNOSIS',
     'PARASITOLOGY',

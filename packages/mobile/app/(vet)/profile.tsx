@@ -69,7 +69,7 @@ export default function VetProfileScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={['#0C1A2E', '#0F2D4A', '#0E4272', '#1D6FA4']}
+        colors={['#011C12', '#022C22', '#047857', '#059669']}
         style={styles.header}
       >
         <SafeAreaView edges={['top']}>
@@ -116,7 +116,7 @@ export default function VetProfileScreen() {
                     <Ionicons
                       name={item.icon as any}
                       size={18}
-                      color={item.danger ? colors.red[500] : '#1D6FA4'}
+                      color={item.danger ? colors.red[500] : colors.brand[700]}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -140,7 +140,7 @@ export default function VetProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.sand[100] },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   header: { overflow: 'hidden' },
   headerInner: {
     alignItems: 'center',
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(16,185,129,0.25)',
   },
   verifiedText: { fontSize: 11, fontWeight: '600', color: '#10B981' },
-  wave: { height: 24, backgroundColor: colors.sand[100], borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  wave: { height: 24, backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
 
   scroll: { flex: 1 },
   scrollContent: { padding: spacing[5] },
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     width: 38, height: 38, borderRadius: radius.md,
     alignItems: 'center', justifyContent: 'center',
   },
-  menuIconNormal: { backgroundColor: '#EFF6FF' },
+  menuIconNormal: { backgroundColor: colors.brand[50] },
   menuIconDanger: { backgroundColor: colors.red[50] },
   menuLabel: { fontSize: 14, fontWeight: '600', color: colors.neutral[900] },
   menuLabelDanger: { color: colors.red[600] },

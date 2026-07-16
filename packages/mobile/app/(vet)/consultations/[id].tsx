@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   FlatList, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -9,23 +9,25 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { Linking } from 'react-native';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { getSocket } from '@/lib/socket';
 import { colors, radius, shadow, spacing, statusConfig } from '@/lib/theme';
 
 interface Message {
   id: string;
   content: string;
   senderId: string;
-  senderRole?: string;
   sentAt: string;
 }
 
 export default function VetChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const qc = useQueryClient();
   const [text, setText] = useState('');
+  const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const sendScale = useRef(new Animated.Value(1)).current;
 
   const { data: consultation } = useQuery({
@@ -44,10 +46,39 @@ export default function VetChatScreen() {
       const d = res.data;
       return Array.isArray(d) ? d : (d?.messages ?? []);
     },
-    refetchInterval: 3000,
   });
 
-  const messages: Message[] = (messagesRaw ?? []).slice().reverse();
+  useEffect(() => {
+    if (messagesRaw) setLocalMessages([...messagesRaw].reverse());
+  }, [messagesRaw]);
+
+  // Socket.io real-time
+  useEffect(() => {
+    if (!token || !id) return;
+    const socket = getSocket(token);
+
+    socket.emit('join-consultation', id);
+
+    const onNewMessage = (msg: Message) => {
+      setLocalMessages(prev => {
+        if (prev.some(m => m.id === msg.id)) return prev;
+        return [msg, ...prev];
+      });
+    };
+
+    const onConsultationUpdated = () => {
+      qc.invalidateQueries({ queryKey: ['consultation', id] });
+    };
+
+    socket.on('new-message', onNewMessage);
+    socket.on('consultation-updated', onConsultationUpdated);
+
+    return () => {
+      socket.off('new-message', onNewMessage);
+      socket.off('consultation-updated', onConsultationUpdated);
+      socket.emit('leave-consultation', id);
+    };
+  }, [token, id]);
 
   const sendMutation = useMutation({
     mutationFn: async (content: string) => {
@@ -55,9 +86,12 @@ export default function VetChatScreen() {
       if (!res.success) throw new Error(res.error?.message ?? 'Erreur');
       return res.data;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['messages', id] });
+    onSuccess: (msg) => {
       setText('');
+      setLocalMessages(prev => {
+        if (prev.some(m => m.id === msg.id)) return prev;
+        return [msg, ...prev];
+      });
     },
     onError: (e: any) => Alert.alert('Erreur', e.message),
   });
@@ -78,10 +112,7 @@ export default function VetChatScreen() {
       if (!res.success) throw new Error(res.error?.message ?? 'Erreur');
       return res.data;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['consultation', id] });
-      router.back();
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['consultation', id] }); router.back(); },
     onError: (e: any) => Alert.alert('Erreur', e.message),
   });
 
@@ -96,27 +127,32 @@ export default function VetChatScreen() {
   };
 
   const handleClose = () => {
-    Alert.alert(
-      'Clôturer la consultation',
-      'Confirmez-vous la fin de cette consultation ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Clôturer', style: 'destructive', onPress: () => closeMutation.mutate() },
-      ],
-    );
+    Alert.alert('Clôturer la consultation', 'Confirmez-vous la fin de cette consultation ?', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Clôturer', style: 'destructive', onPress: () => closeMutation.mutate() },
+    ]);
   };
 
-  const statusCfg   = statusConfig[(consultation?.status as keyof typeof statusConfig) ?? 'PENDING'];
-  const farmerName  = consultation?.farmer?.user?.fullName ?? 'Éleveur';
-  const isPending   = consultation?.status === 'PENDING';
-  const isActive    = consultation?.status === 'ACTIVE';
+  const joinVideoCall = async () => {
+    try {
+      const res = await api.get(`/consultations/${id}/video-room`);
+      if (!res.success) throw new Error('Impossible de rejoindre la vidéo');
+      const url = `https://meet.jit.si/${res.data.roomName}`;
+      await Linking.openURL(url);
+    } catch (e: any) {
+      Alert.alert('Erreur', e.message ?? 'Impossible de rejoindre la vidéo');
+    }
+  };
+
+  const statusCfg  = statusConfig[(consultation?.status as keyof typeof statusConfig) ?? 'PENDING'];
+  const farmerName = consultation?.farmer?.user?.fullName ?? 'Éleveur';
+  const isPending  = consultation?.status === 'PENDING';
+  const isActive   = consultation?.status === 'ACTIVE';
+  const isVideo    = consultation?.type === 'VIDEO';
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isMine = item.senderId === user?.id;
-    const time   = new Date(item.sentAt).toLocaleTimeString('fr-FR', {
-      hour: '2-digit', minute: '2-digit',
-    });
-
+    const time   = new Date(item.sentAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     return (
       <View style={[styles.msgRow, isMine ? styles.msgRowMe : styles.msgRowOther]}>
         {!isMine && (
@@ -126,12 +162,7 @@ export default function VetChatScreen() {
         )}
         <View style={styles.bubbleWrap}>
           {isMine ? (
-            <LinearGradient
-              colors={['#0E4272', '#1D6FA4']}
-              style={[styles.bubble, styles.bubbleMe]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
+            <LinearGradient colors={['#047857', '#059669']} style={[styles.bubble, styles.bubbleMe]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
               <Text style={styles.bubbleTextMe}>{item.content}</Text>
             </LinearGradient>
           ) : (
@@ -147,10 +178,7 @@ export default function VetChatScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={['#0C1A2E', '#0F2D4A', '#0E4272']}
-        style={styles.header}
-      >
+      <LinearGradient colors={['#011C12', '#022C22', '#047857']} style={styles.header}>
         <SafeAreaView edges={['top']}>
           <View style={styles.headerInner}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -170,18 +198,21 @@ export default function VetChatScreen() {
               </View>
             </View>
 
-            {/* Vet actions */}
+            {isActive && (
+              <TouchableOpacity onPress={joinVideoCall} style={styles.videoBtn}>
+                <Ionicons name="videocam" size={20} color="#fff" />
+              </TouchableOpacity>
+            )}
             {isPending && (
               <TouchableOpacity
                 style={styles.acceptBtn}
                 onPress={() => acceptMutation.mutate()}
                 disabled={acceptMutation.isPending}
               >
-                {acceptMutation.isPending ? (
-                  <ActivityIndicator color="#10B981" size="small" />
-                ) : (
-                  <Text style={styles.acceptBtnText}>Accepter</Text>
-                )}
+                {acceptMutation.isPending
+                  ? <ActivityIndicator color="#10B981" size="small" />
+                  : <Text style={styles.acceptBtnText}>Accepter</Text>
+                }
               </TouchableOpacity>
             )}
             {isActive && (
@@ -194,27 +225,28 @@ export default function VetChatScreen() {
         <View style={styles.wave} />
       </LinearGradient>
 
-      {/* Symptoms */}
+      {/* Video banner for VIDEO type */}
+      {isActive && isVideo && (
+        <TouchableOpacity style={styles.videoBanner} onPress={joinVideoCall} activeOpacity={0.85}>
+          <Ionicons name="videocam" size={18} color="#fff" />
+          <Text style={styles.videoBannerText}>Rejoindre l'appel vidéo</Text>
+          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.7)" />
+        </TouchableOpacity>
+      )}
+
       {consultation?.symptomsDescription && (
         <View style={styles.symptomsBanner}>
-          <Ionicons name="document-text-outline" size={14} color="#1D6FA4" />
-          <Text style={styles.symptomsText} numberOfLines={3}>
-            {consultation.symptomsDescription}
-          </Text>
+          <Ionicons name="document-text-outline" size={14} color={colors.brand[700]} />
+          <Text style={styles.symptomsText} numberOfLines={3}>{consultation.symptomsDescription}</Text>
         </View>
       )}
 
-      <KeyboardAvoidingView
-        style={styles.kav}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={styles.kav} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {isLoading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator color="#1D6FA4" size="large" />
-          </View>
+          <View style={styles.loadingWrap}><ActivityIndicator color={colors.brand[600]} size="large" /></View>
         ) : (
           <FlatList
-            data={messages}
+            data={localMessages}
             renderItem={renderMessage}
             keyExtractor={(m) => m.id}
             inverted
@@ -223,9 +255,7 @@ export default function VetChatScreen() {
             ListEmptyComponent={
               <View style={styles.emptyChat}>
                 <Text style={styles.emptyChatIcon}>🩺</Text>
-                <Text style={styles.emptyChatText}>
-                  Répondez à l'éleveur pour démarrer la consultation.
-                </Text>
+                <Text style={styles.emptyChatText}>Répondez à l'éleveur pour démarrer la consultation.</Text>
               </View>
             }
           />
@@ -249,11 +279,10 @@ export default function VetChatScreen() {
               disabled={!text.trim() || sendMutation.isPending}
               style={[styles.sendBtn, (!text.trim() || sendMutation.isPending) && styles.sendBtnDisabled]}
             >
-              {sendMutation.isPending ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Ionicons name="send" size={18} color="#fff" />
-              )}
+              {sendMutation.isPending
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Ionicons name="send" size={18} color="#fff" />
+              }
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -263,29 +292,20 @@ export default function VetChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#EEF2F8' },
-
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   header: {},
   headerInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing[4],
-    paddingTop: spacing[3],
-    paddingBottom: spacing[4],
-    gap: spacing[3],
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: spacing[4], paddingTop: spacing[3], paddingBottom: spacing[4], gap: spacing[3],
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center',
   },
-  headerCenter: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
-  },
+  headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   farmerAvatar: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.35)',
     alignItems: 'center', justifyContent: 'center',
   },
   farmerAvatarText: { fontSize: 16, fontWeight: '700', color: '#fff' },
@@ -293,30 +313,34 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusLabel: { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: '500' },
-
+  videoBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+  },
   acceptBtn: {
-    backgroundColor: 'rgba(16,185,129,0.2)',
-    borderWidth: 1, borderColor: 'rgba(16,185,129,0.5)',
-    borderRadius: radius.full,
-    paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: 'rgba(16,185,129,0.2)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.5)',
+    borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 6,
   },
   acceptBtnText: { fontSize: 12, fontWeight: '700', color: '#10B981' },
   closeBtn: {
-    backgroundColor: 'rgba(239,68,68,0.15)',
-    borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)',
-    borderRadius: radius.full,
-    paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: 'rgba(239,68,68,0.15)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)',
+    borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 6,
   },
   closeBtnText: { fontSize: 12, fontWeight: '700', color: '#FCA5A5' },
+  wave: { height: 16, backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16 },
 
-  wave: { height: 16, backgroundColor: '#EEF2F8', borderTopLeftRadius: 16, borderTopRightRadius: 16 },
+  videoBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#7C3AED', paddingHorizontal: spacing[4], paddingVertical: 12,
+  },
+  videoBannerText: { flex: 1, fontSize: 14, fontWeight: '700', color: '#fff' },
 
   symptomsBanner: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
     margin: spacing[4], marginTop: spacing[2],
-    backgroundColor: '#EFF6FF',
-    borderRadius: radius.lg, padding: spacing[3],
-    borderWidth: 1, borderColor: '#DBEAFE',
+    backgroundColor: colors.brand[50], borderRadius: radius.lg,
+    padding: spacing[3], borderWidth: 1, borderColor: colors.brand[100],
   },
   symptomsText: { flex: 1, fontSize: 12, color: colors.neutral[700], lineHeight: 18 },
 
@@ -324,27 +348,18 @@ const styles = StyleSheet.create({
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: spacing[4] },
 
-  msgRow: {
-    flexDirection: 'row', marginBottom: spacing[3],
-    alignItems: 'flex-end', gap: 8,
-  },
+  msgRow: { flexDirection: 'row', marginBottom: spacing[3], alignItems: 'flex-end', gap: 8 },
   msgRowMe:    { justifyContent: 'flex-end' },
   msgRowOther: { justifyContent: 'flex-start' },
-
   otherAvatar: {
     width: 32, height: 32, borderRadius: 16,
-    backgroundColor: colors.brand[100],
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    backgroundColor: colors.brand[100], alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   otherAvatarText: { fontSize: 13, fontWeight: '700', color: colors.brand[800] },
-
   bubbleWrap: { maxWidth: '75%' },
   bubble: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10 },
-  bubbleMe: { borderBottomRightRadius: 6, ...shadow.sm },
-  bubbleOther: {
-    backgroundColor: '#FFFFFF', borderBottomLeftRadius: 6,
-    borderWidth: 1, borderColor: colors.neutral[100], ...shadow.sm,
-  },
+  bubbleMe:    { borderBottomRightRadius: 6, ...shadow.sm },
+  bubbleOther: { backgroundColor: '#FFFFFF', borderBottomLeftRadius: 6, borderWidth: 1, borderColor: colors.neutral[100], ...shadow.sm },
   bubbleTextMe:    { fontSize: 14, color: '#FFFFFF', lineHeight: 20 },
   bubbleTextOther: { fontSize: 14, color: colors.neutral[900], lineHeight: 20 },
   time: { fontSize: 10, marginTop: 4 },
@@ -359,21 +374,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'flex-end',
     paddingHorizontal: spacing[4], paddingVertical: spacing[3],
     paddingBottom: Platform.OS === 'ios' ? spacing[6] : spacing[3],
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1, borderTopColor: colors.neutral[100],
+    backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: colors.neutral[100],
     gap: spacing[3], ...shadow.md,
   },
   inputWrap: {
-    flex: 1, backgroundColor: colors.neutral[50],
-    borderRadius: radius.xl,
-    borderWidth: 1.5, borderColor: colors.neutral[200],
-    paddingHorizontal: 14, paddingVertical: 10, maxHeight: 120,
+    flex: 1, backgroundColor: colors.neutral[50], borderRadius: radius.xl,
+    borderWidth: 1.5, borderColor: colors.neutral[200], paddingHorizontal: 14, paddingVertical: 10, maxHeight: 120,
   },
   input: { fontSize: 15, color: colors.neutral[900], lineHeight: 20 },
   sendBtn: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#0E4272',
-    alignItems: 'center', justifyContent: 'center', ...shadow.md,
+    backgroundColor: colors.brand[700], alignItems: 'center', justifyContent: 'center', ...shadow.md,
   },
   sendBtnDisabled: { backgroundColor: colors.neutral[300] },
 });

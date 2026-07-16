@@ -10,7 +10,7 @@ cd /app/packages/api
 pnpm exec prisma generate
 
 echo "Running database migrations..."
-pnpm exec prisma db push --accept-data-loss
+DATABASE_URL="$DIRECT_DATABASE_URL" pnpm exec prisma db push --accept-data-loss
 
 echo "Compiling TypeScript..."
 pnpm exec tsc

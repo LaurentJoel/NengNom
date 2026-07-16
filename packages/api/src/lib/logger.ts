@@ -15,6 +15,7 @@ const sanitizePII = winston.format((info) => {
     'otpCode',
     'apiKey',
     'apiSecret',
+    'phone',
   ]
 
   for (const field of piiFields) {
@@ -52,6 +53,17 @@ const errorRotate = new DailyRotateFile({
   level: 'error',
 })
 
+// Security events (failed auth, unauthorized access, CORS rejections) kept 90 days for audit
+const securityRotate = new DailyRotateFile({
+  dirname: 'logs',
+  filename: 'security-%DATE%.log',
+  datePattern: 'YYYY-MM-DD',
+  maxFiles: '90d',
+  maxSize: '20m',
+  zippedArchive: true,
+  level: 'warn',
+})
+
 export const logger = winston.createLogger({
   level: config.LOG_LEVEL,
   format: combine(
@@ -66,6 +78,7 @@ export const logger = winston.createLogger({
   transports: [
     fileRotate,
     errorRotate,
+    securityRotate,
     config.NODE_ENV !== 'production'
       ? new winston.transports.Console({
           format: combine(colorize(), simple()),

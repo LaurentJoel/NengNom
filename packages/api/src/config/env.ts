@@ -14,6 +14,8 @@ const EnvSchema = z.object({
   // JWT
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
+  // Separate secret for video room HMAC derivation (falls back to JWT_ACCESS_SECRET if unset)
+  VIDEO_ROOM_SECRET: z.string().min(32).optional(),
   JWT_ACCESS_TTL: z.coerce.number().default(900),
   JWT_REFRESH_TTL: z.coerce.number().default(604800),
 

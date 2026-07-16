@@ -12,6 +12,7 @@ import idempotencyPlugin from './plugins/idempotency.js'
 import multipartPlugin from './plugins/multipart.js'
 import swaggerPlugin from './plugins/swagger.js'
 import errorHandlerPlugin from './plugins/error-handler.js'
+import socketPlugin from './plugins/socket.js'
 
 const log = createLogger('app')
 
@@ -59,6 +60,8 @@ export async function createApp(): Promise<FastifyInstance> {
   fastify.get('/health/live', async (_request, reply) => {
     return reply.send({ status: 'alive' })
   })
+
+  await fastify.register(socketPlugin)
 
   log.info('Registering module routes...')
   await registerRoutes(fastify)

@@ -9,10 +9,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { GradientHeader } from '@/components/ui/GradientHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { ConsultationCard } from '@/components/ui/ConsultationCard';
-import { QuickAction } from '@/components/ui/QuickAction';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
 import { colors, spacing, radius, shadow } from '@/lib/theme';
+
+const FALLBACK_TIP = {
+  title: 'Conseil du jour',
+  text: 'Vérifiez quotidiennement la température corporelle de vos animaux. Une fièvre peut être le signe d\'une infection débutante.',
+};
 
 const GREET = () => {
   const h = new Date().getHours();
@@ -29,21 +33,19 @@ const DATE_LABEL = () =>
 export default function FarmerDashboard() {
   const { user } = useAuth();
 
-  // Stagger animation
-  const fadeAnims = useRef([0, 1, 2, 3].map(() => new Animated.Value(0))).current;
-  const slideAnims = useRef([0, 1, 2, 3].map(() => new Animated.Value(30))).current;
+  const fadeAnims  = useRef([0, 1, 2, 3, 4].map(() => new Animated.Value(0))).current;
+  const slideAnims = useRef([0, 1, 2, 3, 4].map(() => new Animated.Value(30))).current;
 
   useEffect(() => {
     const anims = fadeAnims.map((fade, i) =>
       Animated.parallel([
-        Animated.timing(fade, { toValue: 1, duration: 500, delay: i * 100, useNativeDriver: true }),
+        Animated.timing(fade,         { toValue: 1, duration: 500, delay: i * 100, useNativeDriver: true }),
         Animated.timing(slideAnims[i], { toValue: 0, duration: 500, delay: i * 100, useNativeDriver: true }),
       ]),
     );
     Animated.stagger(80, anims).start();
   }, []);
 
-  // Data
   const { data: statsData, isLoading: statsLoading, refetch: refetchStats } = useQuery({
     queryKey: ['farmer-stats'],
     queryFn: async () => {
@@ -58,6 +60,23 @@ export default function FarmerDashboard() {
         animalCount: monthly?.avgAnimalCount || recent?.animalCount || 0,
       };
     },
+  });
+
+  const { data: aiTip, refetch: refetchAi } = useQuery({
+    queryKey: ['conseil-du-jour'],
+    queryFn: async () => {
+      const res = await api.get('/ai/suggestions/latest');
+      if (!res.success || !res.data) return null;
+      const record = res.data;
+      let parsed: any[] = record.parsed ?? [];
+      if (parsed.length === 0 && typeof record.suggestion === 'string') {
+        try { parsed = JSON.parse(record.suggestion); } catch {}
+      }
+      const first = Array.isArray(parsed) ? parsed.find((p: any) => p?.title) : null;
+      if (!first) return null;
+      return { title: first.title, text: first.content ?? first.description ?? '' };
+    },
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: consultData, isLoading: consultLoading, refetch: refetchConsult } = useQuery({
@@ -77,13 +96,8 @@ export default function FarmerDashboard() {
     (c: any) => c.status === 'ACTIVE',
   ).length;
 
+  const tip = aiTip ?? FALLBACK_TIP;
   const isRefreshing = statsLoading || consultLoading;
-
-  const onRefresh = () => {
-    refetchStats();
-    refetchConsult();
-  };
-
   const firstName = user?.fullName?.split(' ')[0] ?? 'Éleveur';
 
   return (
@@ -93,8 +107,8 @@ export default function FarmerDashboard() {
         name={firstName}
         subtitle={DATE_LABEL()}
         notificationCount={activeCount}
+        onNotificationPress={() => router.push('/(farmer)/consultations')}
       >
-        {/* Inline stat chips inside header */}
         <View style={styles.headerChips}>
           <View style={styles.chip}>
             <Text style={styles.chipValue}>{statsData?.animalCount ?? '—'}</Text>
@@ -116,48 +130,87 @@ export default function FarmerDashboard() {
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
-            onRefresh={onRefresh}
+            onRefresh={() => { refetchStats(); refetchConsult(); refetchAi(); }}
             tintColor={colors.brand[600]}
             colors={[colors.brand[600]]}
           />
         }
       >
-        {/* Quick actions */}
+        {/* Conseil du jour — promoted to top */}
         <Animated.View
           style={[
             styles.section,
             { opacity: fadeAnims[0], transform: [{ translateY: slideAnims[0] }] },
           ]}
         >
-          <SectionTitle title="Actions rapides" />
-          <View style={styles.actionsGrid}>
-            <QuickAction
-              icon="chatbubbles-outline"
-              label="Consulter un vét."
-              colors={['#022C22', '#047857']}
-              onPress={() => router.push('/(farmer)/consultations')}
-            />
-            <QuickAction
-              icon="sparkles-outline"
-              label="Suggestions IA"
-              colors={['#4C1D95', '#7C3AED']}
-              onPress={() => router.push('/(farmer)/ai')}
-            />
-            <QuickAction
-              icon="flask-outline"
-              label="Résultats labo"
-              colors={['#1D4ED8', '#3B82F6']}
-              onPress={() => router.push('/(farmer)/consultations')}
-            />
-            <QuickAction
-              icon="bar-chart-outline"
-              label="Ma ferme"
-              colors={['#B45309', '#D97706']}
-              onPress={() => {}}
-            />
+          <TouchableOpacity
+            style={styles.tipCard}
+            activeOpacity={0.85}
+            onPress={() => router.push('/(farmer)/ai')}
+          >
+            <View style={styles.tipIcon}>
+              <Text style={{ fontSize: 22 }}>✨</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.tipHeader}>
+                <Text style={styles.tipTitle}>Conseil du jour</Text>
+                {aiTip && (
+                  <View style={styles.aiPill}>
+                    <Text style={styles.aiPillText}>IA</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.tipText} numberOfLines={3}>{tip.text}</Text>
+              <Text style={styles.tipSeeMore}>Voir tous les conseils →</Text>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Quick actions — Lab + Community + Find Vet */}
+        <Animated.View
+          style={[
+            styles.section,
+            { opacity: fadeAnims[1], transform: [{ translateY: slideAnims[1] }] },
+          ]}
+        >
+          <SectionTitle title="Accès rapides" />
+          <View style={styles.quickRow}>
+            <TouchableOpacity
+              style={[styles.quickBtn, { backgroundColor: '#F0FDF4', borderColor: colors.brand[200] }]}
+              onPress={() => router.push('/(farmer)/lab-order')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.quickIcon, { backgroundColor: colors.brand[100] }]}>
+                <Text style={{ fontSize: 22 }}>🧪</Text>
+              </View>
+              <Text style={[styles.quickLabel, { color: colors.brand[800] }]}>Commander{'\n'}un Labo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.quickBtn, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}
+              onPress={() => router.push('/(farmer)/community')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.quickIcon, { backgroundColor: '#DBEAFE' }]}>
+                <Text style={{ fontSize: 22 }}>👥</Text>
+              </View>
+              <Text style={[styles.quickLabel, { color: '#1E40AF' }]}>Communauté{'\n'}d'éleveurs</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.quickBtn, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}
+              onPress={() => router.push('/(farmer)/find-vet')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.quickIcon, { backgroundColor: '#FFEDD5' }]}>
+                <Text style={{ fontSize: 22 }}>🩺</Text>
+              </View>
+              <Text style={[styles.quickLabel, { color: '#9A3412' }]}>Trouver{'\n'}un vétérinaire</Text>
+            </TouchableOpacity>
           </View>
         </Animated.View>
 
@@ -165,7 +218,7 @@ export default function FarmerDashboard() {
         <Animated.View
           style={[
             styles.section,
-            { opacity: fadeAnims[1], transform: [{ translateY: slideAnims[1] }] },
+            { opacity: fadeAnims[2], transform: [{ translateY: slideAnims[2] }] },
           ]}
         >
           <SectionTitle title="Aperçu de l'exploitation" />
@@ -181,15 +234,15 @@ export default function FarmerDashboard() {
               emoji="💬"
               value={activeCount}
               label="Consultations actives"
-              accent={colors.blue[600]}
-              accentLight={colors.blue[100]}
+              accent={colors.brand[600]}
+              accentLight={colors.brand[100]}
             />
             <StatCard
               emoji="🧪"
               value={0}
               label="Analyses en cours"
-              accent={colors.purple[600]}
-              accentLight={colors.purple[100]}
+              accent={colors.brand[500]}
+              accentLight={colors.brand[50]}
             />
           </View>
         </Animated.View>
@@ -198,7 +251,8 @@ export default function FarmerDashboard() {
         <Animated.View
           style={[
             styles.section,
-            { opacity: fadeAnims[2], transform: [{ translateY: slideAnims[2] }] },
+            styles.lastSection,
+            { opacity: fadeAnims[3], transform: [{ translateY: slideAnims[3] }] },
           ]}
         >
           <View style={styles.sectionHeader}>
@@ -233,29 +287,21 @@ export default function FarmerDashboard() {
             ))
           )}
         </Animated.View>
-
-        {/* Health tip card */}
-        <Animated.View
-          style={[
-            styles.section,
-            styles.lastSection,
-            { opacity: fadeAnims[3], transform: [{ translateY: slideAnims[3] }] },
-          ]}
-        >
-          <View style={styles.tipCard}>
-            <View style={styles.tipIcon}>
-              <Text style={{ fontSize: 22 }}>💡</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.tipTitle}>Conseil du jour</Text>
-              <Text style={styles.tipText}>
-                Vérifiez quotidiennement la température corporelle de vos animaux.
-                Une fièvre peut être le signe d'une infection débutante.
-              </Text>
-            </View>
-          </View>
-        </Animated.View>
       </ScrollView>
+
+      {/* Floating AI chatbot button */}
+      <TouchableOpacity
+        style={styles.fab}
+        activeOpacity={0.88}
+        onPress={() => router.push('/(farmer)/ai-chat')}
+      >
+        <View style={styles.fabInner}>
+          <Text style={{ fontSize: 22 }}>✨</Text>
+        </View>
+        <View style={styles.fabLabel}>
+          <Text style={styles.fabLabelText}>IA Chat</Text>
+        </View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -265,10 +311,9 @@ function SectionTitle({ title }: { title: string }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.sand[100] },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   scroll: { flex: 1 },
 
-  // Header chips
   headerChips: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255,255,255,0.1)',
@@ -293,7 +338,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 
-  // Sections
   section: {
     paddingHorizontal: spacing[5],
     paddingTop: spacing[5],
@@ -318,21 +362,30 @@ const styles = StyleSheet.create({
     color: colors.brand[700],
   },
 
-  // Quick actions grid
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -spacing[2],
-    marginBottom: spacing[2],
+  quickRow: { flexDirection: 'row', gap: spacing[3] },
+  quickBtn: {
+    flex: 1,
+    borderRadius: radius['2xl'],
+    borderWidth: 1.5,
+    padding: spacing[3],
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickIcon: {
+    width: 44, height: 44,
+    borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  quickLabel: {
+    fontSize: 11, fontWeight: '700',
+    textAlign: 'center', lineHeight: 15,
   },
 
-  // Stat cards
   statsRow: {
     flexDirection: 'row',
     gap: spacing[3],
   },
 
-  // Empty state
   emptyBox: {
     backgroundColor: '#FFFFFF',
     borderRadius: radius['2xl'],
@@ -353,12 +406,11 @@ const styles = StyleSheet.create({
   },
   emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
-  // Tip card
   tipCard: {
-    backgroundColor: colors.amber[50],
+    backgroundColor: colors.brand[50],
     borderRadius: radius['2xl'],
     borderWidth: 1,
-    borderColor: colors.amber[100],
+    borderColor: colors.brand[100],
     padding: spacing[4],
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -367,10 +419,44 @@ const styles = StyleSheet.create({
   tipIcon: {
     width: 44, height: 44,
     borderRadius: radius.md,
-    backgroundColor: colors.amber[100],
+    backgroundColor: colors.brand[100],
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tipTitle:   { fontSize: 13, fontWeight: '700', color: colors.amber[600], marginBottom: 4 },
-  tipText:    { fontSize: 12, color: colors.neutral[700], lineHeight: 18 },
+  tipHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  tipTitle: { fontSize: 13, fontWeight: '700', color: colors.brand[800] },
+  aiPill: {
+    backgroundColor: colors.brand[600], borderRadius: radius.full,
+    paddingHorizontal: 6, paddingVertical: 1,
+  },
+  aiPillText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  tipText:     { fontSize: 12, color: colors.neutral[700], lineHeight: 18 },
+  tipSeeMore:  { fontSize: 11, fontWeight: '600', color: colors.brand[700], marginTop: 6 },
+
+  // Floating AI button
+  fab: {
+    position: 'absolute',
+    bottom: 76,
+    right: 18,
+    alignItems: 'center',
+    ...shadow.hero,
+  },
+  fabInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.brand[700],
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.brand[500],
+  },
+  fabLabel: {
+    marginTop: 4,
+    backgroundColor: colors.brand[800],
+    borderRadius: radius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  fabLabelText: { fontSize: 10, fontWeight: '700', color: '#fff' },
 });

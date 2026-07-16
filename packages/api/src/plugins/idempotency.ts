@@ -1,53 +1,54 @@
 import { FastifyInstance } from 'fastify'
 import fastifyPlugin from 'fastify-plugin'
+import { createHash } from 'crypto'
 import { createLogger } from '../lib/logger.js'
+import { REDIS } from '../config/constants.js'
 
 const log = createLogger('idempotency')
 
-/**
- * Idempotency middleware
- * Prevents duplicate operations using Idempotency-Key header
- * Stores responses in Redis with key lifetime
- */
 export default fastifyPlugin(async (fastify: FastifyInstance) => {
   fastify.addHook('preHandler', async (request, reply) => {
-    // Only apply to mutation methods
-    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
-      return
-    }
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) return
 
     const idempotencyKey = request.headers['idempotency-key'] as string
-    if (!idempotencyKey) {
-      // Idempotency is optional; not required
-      return
-    }
+    if (!idempotencyKey) return
 
-    // Check if we've seen this key before
-    const cacheKey = `idempotency:${idempotencyKey}`
-    const cachedResponse = await fastify.redis.get(cacheKey)
+    // Scope key to the requesting user by hashing their auth header — prevents cross-user cache poisoning
+    const rawAuth = request.headers['authorization'] ?? 'anon'
+    const userScope = createHash('sha256').update(rawAuth as string).digest('hex').slice(0, 16)
+    const cacheKey = `idempotency:${userScope}:${idempotencyKey}`
 
-    if (cachedResponse) {
-      log.debug('Returning cached idempotent response', { idempotencyKey })
-      const cached = JSON.parse(cachedResponse)
-      reply.status(cached.statusCode).send(cached.body)
-      return
-    }
+    // Atomic claim — SET NX prevents TOCTOU race where two concurrent requests both see a missing key
+    const claimed = await fastify.redis.set(cacheKey, 'in-flight', 'EX', REDIS.IDEMPOTENCY_TTL, 'NX')
 
-    // Store original reply.send to intercept response
-    const originalSend = reply.send
-    reply.send = function (payload: any) {
-      // Cache successful responses (2xx)
-      if (reply.statusCode >= 200 && reply.statusCode < 300) {
-        const cacheData = {
-          statusCode: reply.statusCode,
-          body: payload,
-        }
-        // Store for 24 hours
-        fastify.redis.setex(cacheKey, 86400, JSON.stringify(cacheData))
-        log.debug('Cached idempotent response', { idempotencyKey })
+    if (!claimed) {
+      // Key already exists — either a completed result or a concurrent in-flight request
+      const value = await fastify.redis.get(cacheKey)
+      if (value && value !== 'in-flight') {
+        log.info('Returning cached idempotent response', { idempotencyKey })
+        const cached = JSON.parse(value)
+        reply.status(cached.statusCode).send(cached.body)
+        return
       }
+      // Concurrent duplicate in flight — return 409
+      reply.status(409).send({
+        success: false,
+        error: { code: 'CONFLICT', message: 'A request with this idempotency key is already being processed' },
+      })
+      return
+    }
 
-      return originalSend.call(this, payload)
+    // Intercept the response to cache it after execution
+    const originalSend = reply.send.bind(reply)
+    reply.send = function (payload: any) {
+      if (reply.statusCode >= 200 && reply.statusCode < 300) {
+        fastify.redis.setex(cacheKey, REDIS.IDEMPOTENCY_TTL, JSON.stringify({ statusCode: reply.statusCode, body: payload }))
+        log.info('Cached idempotent response', { idempotencyKey })
+      } else {
+        // Release the lock on error so the client can retry
+        fastify.redis.del(cacheKey)
+      }
+      return originalSend(payload)
     }
   })
 })

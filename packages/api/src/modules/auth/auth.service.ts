@@ -136,7 +136,15 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } })
     if (!user) throw new NotFoundError('User', userId)
+    if (!user.isActive) throw new UnauthorizedError('Account is disabled')
 
+    // Delete old token pair before issuing new one to prevent replay attacks
+    const pipeline = this.redis.pipeline()
+    pipeline.del(`${REDIS.KEY_REFRESH_TOKEN_PREFIX}${refreshToken}`)
+    pipeline.del(`${REDIS.KEY_REFRESH_UID_PREFIX}${userId}`)
+    await pipeline.exec()
+
+    log.info('Token refreshed', { userId })
     return this.generateTokenPair(user)
   }
 

@@ -12,7 +12,7 @@ import { ConsultationCard } from '@/components/ui/ConsultationCard';
 import { StatCard } from '@/components/ui/StatCard';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api';
-import { colors, radius, shadow, spacing } from '@/lib/theme';
+import { colors, radius, spacing } from '@/lib/theme';
 
 const GREET = () => {
   const h = new Date().getHours();
@@ -63,7 +63,7 @@ export default function VetDashboard() {
     <View style={styles.root}>
       {/* Vet header - deep teal/blue-green */}
       <LinearGradient
-        colors={['#0C1A2E', '#0F2D4A', '#0E4272', '#1D6FA4']}
+        colors={['#011C12', '#022C22', '#047857', '#059669']}
         style={styles.header}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -129,8 +129,8 @@ export default function VetDashboard() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={refetch}
-            tintColor="#1D6FA4"
-            colors={['#1D6FA4']}
+            tintColor={colors.brand[600]}
+            colors={[colors.brand[600]]}
           />
         }
       >
@@ -215,7 +215,7 @@ export default function VetDashboard() {
           </View>
 
           {isLoading ? (
-            <ActivityIndicator color="#1D6FA4" style={{ marginTop: 20 }} />
+            <ActivityIndicator color={colors.brand[600]} style={{ marginTop: 20 }} />
           ) : consultations.filter((c) => c.status === 'ACTIVE').length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={{ fontSize: 32, marginBottom: 8 }}>🩺</Text>
@@ -244,7 +244,7 @@ export default function VetDashboard() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.sand[100] },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
 
   header: { overflow: 'hidden' },
   decCircle1: {
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
     borderRadius: 8, minWidth: 16, height: 16,
     alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#0C1A2E',
+    paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#011C12',
   },
   notifBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff' },
   avatar: {
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   },
   alertText: { flex: 1, fontSize: 12, fontWeight: '600', color: '#fff' },
 
-  wave: { height: 20, backgroundColor: colors.sand[100], borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  wave: { height: 20, backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
 
   scroll: { flex: 1 },
   section: { paddingHorizontal: spacing[5], paddingTop: spacing[5] },
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   },
   urgentTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   urgentDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
-  seeAll: { fontSize: 13, fontWeight: '600', color: '#1D6FA4' },
+  seeAll: { fontSize: 13, fontWeight: '600', color: colors.brand[700] },
 
   statsRow: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[3], marginBottom: spacing[2] },
 

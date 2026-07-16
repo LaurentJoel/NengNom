@@ -35,18 +35,37 @@ export async function usersRoutes(fastify: FastifyInstance) {
         type: 'object',
         properties: {
           available: { type: 'boolean' },
-          limit: { type: 'number', default: 20 },
+          region:    { type: 'string' },
+          city:      { type: 'string' },
+          limit:     { type: 'number', default: 50 },
         },
       },
     },
   }, async (request, reply) => {
-    const { available, limit } = request.query as { available?: boolean; limit?: number }
+    const { available, region, city, limit } = request.query as {
+      available?: boolean; region?: string; city?: string; limit?: number
+    }
     const vets = await fastify.prisma.vetProfile.findMany({
       where: available ? { isAvailable: true } : undefined,
       include: { user: true },
-      take: limit || 20,
+      take: limit || 50,
     })
-    return reply.send(vets)
+
+    // Sort: same city → same region → rest
+    const sorted = vets.slice().sort((a: any, b: any) => {
+      const aCity   = (a.user.city   ?? '').toLowerCase()
+      const bCity   = (b.user.city   ?? '').toLowerCase()
+      const aRegion = (a.user.region ?? '').toLowerCase()
+      const bRegion = (b.user.region ?? '').toLowerCase()
+      const targetCity   = (city   ?? '').toLowerCase()
+      const targetRegion = (region ?? '').toLowerCase()
+
+      const aScore = (aCity && aCity === targetCity ? 2 : 0) + (aRegion && aRegion === targetRegion ? 1 : 0)
+      const bScore = (bCity && bCity === targetCity ? 2 : 0) + (bRegion && bRegion === targetRegion ? 1 : 0)
+      return bScore - aScore
+    })
+
+    return reply.send(sorted)
   })
 
   /**

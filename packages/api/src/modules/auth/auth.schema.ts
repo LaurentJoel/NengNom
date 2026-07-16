@@ -6,7 +6,6 @@ import {
   FullNameSchema,
   UUIDSchema,
   LoginSchema as SharedLoginSchema,
-  RegisterSchema as SharedRegisterSchema,
 } from '@neng-nom/shared/schemas'
 
 /**
@@ -14,7 +13,20 @@ import {
  * Extends and customizes shared schemas as needed
  */
 
-export const RegisterSchema = SharedRegisterSchema
+// Restrict self-registration to FARMER and VET — LAB_TECH/ADMIN require privileged provisioning
+export const RegisterSchema = z.object({
+  phone: PhoneSchema,
+  email: EmailSchema.optional(),
+  password: PasswordSchema,
+  confirmPassword: z.string(),
+  fullName: FullNameSchema,
+  role: z.enum(['FARMER', 'VET']),
+  country: z.string().length(2).default('CM'),
+  region: z.string().optional(),
+}).refine((d) => d.password === d.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+})
 
 export const LoginSchema = SharedLoginSchema
 

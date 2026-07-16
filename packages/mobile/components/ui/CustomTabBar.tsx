@@ -15,53 +15,81 @@ import { colors, shadow } from '@/lib/theme';
 const { width } = Dimensions.get('window');
 
 const ICON_MAP: Record<string, { active: string; inactive: string }> = {
-  index:          { active: 'home',             inactive: 'home-outline' },
-  consultations:  { active: 'chatbubbles',      inactive: 'chatbubbles-outline' },
-  ai:             { active: 'sparkles',          inactive: 'sparkles-outline' },
-  lab:            { active: 'flask',             inactive: 'flask-outline' },
-  profile:        { active: 'person-circle',     inactive: 'person-circle-outline' },
+  index:                  { active: 'home',           inactive: 'home-outline' },
+  'consultations/index':  { active: 'chatbubbles',    inactive: 'chatbubbles-outline' },
+  consultations:          { active: 'chatbubbles',    inactive: 'chatbubbles-outline' },
+  ai:                     { active: 'sparkles',        inactive: 'sparkles-outline' },
+  farm:                   { active: 'leaf',            inactive: 'leaf-outline' },
+  lab:                    { active: 'flask',           inactive: 'flask-outline' },
+  community:              { active: 'people',          inactive: 'people-outline' },
+  profile:                { active: 'person-circle',   inactive: 'person-circle-outline' },
 };
 
 const LABEL_MAP: Record<string, string> = {
-  index:         'Accueil',
-  consultations: 'Consultations',
-  ai:            'Suggestions',
-  lab:           'Labo',
-  profile:       'Profil',
+  index:                  'Accueil',
+  'consultations/index':  'Consultations',
+  consultations:          'Consultations',
+  ai:                     'Suggestions',
+  farm:                   'Ma Ferme',
+  lab:                    'Labo',
+  community:              'Communauté',
+  profile:                'Profil',
 };
 
+function isRouteVisible(route: { name: string }, options: Record<string, any>): boolean {
+  // Dynamic-segment routes (consultations/[id]) are never tabs
+  if (route.name.includes('[')) return false;
+  // Explicitly hidden via custom tabBarVisible: false option
+  if (options.tabBarVisible === false) return false;
+  return true;
+}
+
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  // Compute only visible routes
+  const visibleRoutes = state.routes.filter((route) => {
+    const { options } = descriptors[route.key];
+    return isRouteVisible(route, options as any);
+  });
+
+  const tabWidth = width / (visibleRoutes.length || 1);
+
+  // Find visible index of the currently focused route
+  const focusedRoute = state.routes[state.index];
+  const activeVisibleIdx = visibleRoutes.findIndex((r) => r.key === focusedRoute?.key);
+
   const indicatorX = useRef(new Animated.Value(0)).current;
-  const tabWidth = width / state.routes.length;
 
   useEffect(() => {
-    Animated.spring(indicatorX, {
-      toValue: state.index * tabWidth,
-      tension: 70,
-      friction: 12,
-      useNativeDriver: true,
-    }).start();
-  }, [state.index, tabWidth]);
+    if (activeVisibleIdx >= 0) {
+      Animated.spring(indicatorX, {
+        toValue: activeVisibleIdx * tabWidth,
+        tension: 70,
+        friction: 12,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [activeVisibleIdx, tabWidth]);
 
   return (
     <View style={styles.container}>
-      {/* Sliding indicator */}
-      <Animated.View
-        style={[
-          styles.indicator,
-          {
-            width: tabWidth,
-            transform: [{ translateX: indicatorX }],
-          },
-        ]}
-      >
-        <View style={styles.indicatorPill} />
-      </Animated.View>
+      {/* Sliding indicator — only shown when an actual tab is focused */}
+      {activeVisibleIdx >= 0 && (
+        <Animated.View
+          style={[
+            styles.indicator,
+            { width: tabWidth, transform: [{ translateX: indicatorX }] },
+          ]}
+        >
+          <View style={styles.indicatorPill} />
+        </Animated.View>
+      )}
 
-      {state.routes.map((route, index) => {
-        const isFocused = state.index === index;
-        const iconSet   = ICON_MAP[route.name] ?? ICON_MAP.index;
-        const label     = LABEL_MAP[route.name] ?? route.name;
+      {visibleRoutes.map((route) => {
+        const isFocused  = route.key === focusedRoute?.key;
+        const iconSet    = ICON_MAP[route.name] ?? ICON_MAP.index;
+        const label      = descriptors[route.key].options.tabBarLabel as string
+                          ?? LABEL_MAP[route.name]
+                          ?? route.name;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -99,17 +127,9 @@ function TabItem({
   isFocused: boolean;
   onPress: () => void;
 }) {
-  const scaleAnim  = useRef(new Animated.Value(1)).current;
-  const colorAnim  = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.spring(colorAnim, {
-      toValue: isFocused ? 1 : 0,
-      tension: 80,
-      friction: 12,
-      useNativeDriver: false,
-    }).start();
-
     if (isFocused) {
       Animated.sequence([
         Animated.timing(scaleAnim, { toValue: 1.15, duration: 120, useNativeDriver: true }),
@@ -118,11 +138,6 @@ function TabItem({
     }
   }, [isFocused]);
 
-  const iconColor = colorAnim.interpolate({
-    inputRange:  [0, 1],
-    outputRange: [colors.neutral[400], colors.brand[700]],
-  });
-
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -130,15 +145,13 @@ function TabItem({
       style={styles.tab}
     >
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        <Animated.Text>
-          <Ionicons
-            name={icon as any}
-            size={22}
-            color={isFocused ? colors.brand[700] : colors.neutral[400]}
-          />
-        </Animated.Text>
+        <Ionicons
+          name={icon as any}
+          size={22}
+          color={isFocused ? colors.brand[700] : colors.neutral[400]}
+        />
       </Animated.View>
-      <Animated.Text
+      <Text
         style={[
           styles.tabLabel,
           { color: isFocused ? colors.brand[700] : colors.neutral[400] },
@@ -146,7 +159,7 @@ function TabItem({
         ]}
       >
         {label}
-      </Animated.Text>
+      </Text>
     </TouchableOpacity>
   );
 }

@@ -1,5 +1,9 @@
 import { FastifyInstance } from 'fastify'
 import { AIService } from './ai.service.js'
+import { RATE_LIMITS } from '../../config/constants.js'
+
+const AI_RATE = { max: 10, timeWindow: RATE_LIMITS.DEFAULT_TIMEFRAME }
+const AI_CHAT_RATE = { max: 20, timeWindow: RATE_LIMITS.DEFAULT_TIMEFRAME }
 
 export async function aiRoutes(fastify: FastifyInstance) {
   const aiService = new AIService(fastify.prisma)
@@ -23,12 +27,28 @@ export async function aiRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/ai/suggestions/generate', {
+    config: { rateLimit: AI_RATE },
     preHandler: [fastify.authorize('FARMER')],
     schema: { tags: ['AI'], summary: 'Generate new AI suggestions' },
   }, async (request, reply) => {
     const userId = (request.user as any).id
     const suggestion = await aiService.generateSuggestions(userId)
     return reply.status(201).send(suggestion)
+  })
+
+  fastify.post('/ai/chat', {
+    config: { rateLimit: AI_CHAT_RATE },
+    preHandler: [fastify.authorize('FARMER')],
+    schema: {
+      tags: ['AI'],
+      summary: 'Chat with AI farming assistant',
+      body: { type: 'object', properties: { message: { type: 'string', minLength: 1, maxLength: 1000 } }, required: ['message'] },
+    },
+  }, async (request, reply) => {
+    const userId = (request.user as any).id
+    const { message } = request.body as { message: string }
+    const reply_ = await aiService.chatWithFarmer(userId, message)
+    return reply.send({ reply: reply_ })
   })
 
   fastify.post<{ Params: { id: string } }>('/ai/suggestions/:id/feedback', {

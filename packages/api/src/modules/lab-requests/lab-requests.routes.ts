@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { LabRequestsService } from './lab-requests.service.js'
 import { CreateLabRequestSchema, UpdateLabRequestSchema } from './lab-requests.schema.js'
+import { ForbiddenError } from '../../lib/errors.js'
 
 export async function labRequestsRoutes(fastify: FastifyInstance) {
   const service = new LabRequestsService(fastify.prisma)
@@ -39,13 +40,18 @@ export async function labRequestsRoutes(fastify: FastifyInstance) {
     preHandler: [fastify.authenticate],
     schema: { tags: ['Lab'], summary: 'Get lab request' },
   }, async (request, reply) => {
+    const user = request.user as any
     const result = await service.getRequest(request.params.id)
+    // FARMERs can only view their own; VETs may view any to pick up work
+    if (user.role === 'FARMER' && result.farmer?.user?.id !== user.id) {
+      throw new ForbiddenError('You do not have access to this lab request')
+    }
     return reply.send(result)
   })
 
   fastify.patch<{ Params: { id: string } }>('/lab-requests/:id', {
-    preHandler: [fastify.authenticate],
-    schema: { tags: ['Lab'], summary: 'Update lab request status' },
+    preHandler: [fastify.authorize('VET')],
+    schema: { tags: ['Lab'], summary: 'Update lab request status (VET only)' },
   }, async (request, reply) => {
     const body = UpdateLabRequestSchema.parse(request.body)
     const result = await service.updateRequest(request.params.id, body)

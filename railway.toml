@@ -1,11 +1,12 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "Dockerfile.api"
 
 [deploy]
-startCommand = "node dist/packages/api/src/server.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
+healthcheckPath = "/health"
+healthcheckTimeout = 60
 
 [[services]]
 name = "neng-nom-api"

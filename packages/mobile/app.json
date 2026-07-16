@@ -7,11 +7,13 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/logo.jpeg",
       "resizeMode": "contain",
       "backgroundColor": "#022C22"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.nengnomtech.app"
@@ -22,23 +24,52 @@
         "backgroundColor": "#022C22"
       },
       "package": "com.nengnomtech.app",
-      "permissions": ["android.permission.READ_EXTERNAL_STORAGE"]
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "scheme": "nengnomapp",
     "plugins": [
       "expo-router",
       "expo-secure-store",
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Neng-Nom a besoin de localiser votre ferme pour envoyer un technicien de laboratoire.",
+          "locationWhenInUsePermission": "Neng-Nom a besoin de localiser votre ferme pour envoyer un technicien de laboratoire."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Neng-Nom souhaite accéder à votre galerie pour joindre des photos ou vidéos à vos publications.",
+          "cameraPermission": "Neng-Nom souhaite utiliser votre caméra pour prendre des photos ou vidéos."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#022C22",
-          "image": "./assets/splash.png",
+          "image": "./assets/logo.jpeg",
           "imageWidth": 200
         }
       ]
     ],
+    "newArchEnabled": true,
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "952e4444-030c-4a57-906a-7b1792cba001"
+      }
     }
   }
 }

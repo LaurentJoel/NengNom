@@ -48,8 +48,10 @@ export class UsersService {
       where: { id: userId },
       data: {
         fullName: input.fullName,
-        phone: input.phone,
-        region: input.region,
+        phone:    input.phone,
+        region:   input.region,
+        city:     input.city,
+        quarter:  input.quarter,
       },
       include: {
         farmerProfile: true,
@@ -98,9 +100,10 @@ export class UsersService {
     const profile = await this.prisma.vetProfile.update({
       where: { id: user.vetProfile.id },
       data: {
+        licenseNumber:  input.licenseNumber,
         specialization: input.specialization,
-        hourlyRate: input.hourlyRate,
-        isAvailable: input.isAvailable,
+        hourlyRate:     input.hourlyRate,
+        isAvailable:    input.isAvailable,
       },
     })
 
@@ -129,19 +132,21 @@ export class UsersService {
 
   private formatUserResponse(user: any) {
     return {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role,
-      country: user.country,
-      region: user.region,
-      phone: user.phone,
-      isVerified: user.isVerified,
-      isActive: user.isActive,
-      createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
+      id:          user.id,
+      email:       user.email,
+      fullName:    user.fullName,
+      role:        user.role,
+      country:     user.country,
+      region:      user.region,
+      city:        user.city,
+      quarter:     user.quarter,
+      phone:       user.phone,
+      isVerified:  user.isVerified,
+      isActive:    user.isActive,
+      createdAt:   user.createdAt.toISOString(),
+      updatedAt:   user.updatedAt.toISOString(),
       farmerProfile: user.farmerProfile,
-      vetProfile: user.vetProfile,
+      vetProfile:    user.vetProfile,
     }
   }
 }

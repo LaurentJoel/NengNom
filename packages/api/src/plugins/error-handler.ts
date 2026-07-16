@@ -48,7 +48,8 @@ export default fastifyPlugin(async (fastify: FastifyInstance) => {
           error: {
             code: error.code,
             message: error.message,
-            details: error.details || null,
+            // Never expose internal details in production — they may contain DB state or internal IDs
+            details: process.env['NODE_ENV'] === 'production' ? null : (error.details || null),
           },
           requestId,
           timestamp: new Date().toISOString(),

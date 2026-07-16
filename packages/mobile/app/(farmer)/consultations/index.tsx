@@ -51,7 +51,7 @@ export default function FarmerConsultationsScreen() {
                 {consultations.length} consultation{consultations.length !== 1 ? 's' : ''}
               </Text>
             </View>
-            <TouchableOpacity style={styles.newBtn} onPress={() => {}}>
+            <TouchableOpacity style={styles.newBtn} onPress={() => router.push('/(farmer)/find-vet')}>
               <Ionicons name="add" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -107,9 +107,9 @@ export default function FarmerConsultationsScreen() {
           <EmptyState
             icon="chatbubbles-outline"
             title="Aucune consultation"
-            subtitle="Commencez par consulter un vétérinaire pour vos animaux."
-            actionLabel="Nouvelle consultation"
-            onAction={() => {}}
+            subtitle="Trouvez un vétérinaire disponible et démarrez une consultation par chat."
+            actionLabel="Trouver un vétérinaire"
+            onAction={() => router.push('/(farmer)/find-vet')}
           />
         ) : (
           consultations.map((c) => (
@@ -127,7 +127,7 @@ export default function FarmerConsultationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.sand[100] },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
 
   header: { paddingBottom: 0 },
   headerInner: {
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
   tabTextActive: { color: colors.brand[800] },
 
-  wave: { height: 20, backgroundColor: colors.sand[100], borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  wave: { height: 20, backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
 
   list: { flex: 1 },
   listContent: { padding: spacing[5], paddingTop: spacing[3] },

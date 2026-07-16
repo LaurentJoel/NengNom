@@ -12,7 +12,9 @@ export const GetUserSchema = z.object({
 export const UpdateProfileSchema = z.object({
   fullName: FullNameSchema.optional(),
   phone: PhoneSchema.optional(),
-  region: z.string().max(100).optional(),
+  region:  z.string().max(100).optional(),
+  city:    z.string().max(100).optional(),
+  quarter: z.string().max(100).optional(),
 })
 
 export const FarmerProfileSchema = z.object({
@@ -37,9 +39,10 @@ export const VetProfileSchema = z.object({
 })
 
 export const UpdateVetProfileSchema = z.object({
+  licenseNumber:  z.string().min(1).max(50).optional(),
   specialization: z.string().max(100).optional(),
-  hourlyRate: z.number().min(0).optional(),
-  isAvailable: z.boolean().optional(),
+  hourlyRate:     z.number().min(0).optional(),
+  isAvailable:    z.boolean().optional(),
 })
 
 export const UserResponseSchema = z.object({
@@ -48,7 +51,9 @@ export const UserResponseSchema = z.object({
   fullName: FullNameSchema,
   role: z.enum(['FARMER', 'VET', 'LAB_TECH', 'ADMIN']),
   country: z.string().length(2),
-  region: z.string().optional(),
+  region:  z.string().optional(),
+  city:    z.string().optional(),
+  quarter: z.string().optional(),
   phone: PhoneSchema.optional(),
   isVerified: z.boolean(),
   isActive: z.boolean(),

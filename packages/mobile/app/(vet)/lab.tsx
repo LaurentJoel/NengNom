@@ -34,7 +34,7 @@ export default function VetLabScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={['#1A0533', '#2D0A5C', '#4A1080', '#6B21A8']}
+        colors={['#011C12', '#022C22', '#047857', '#059669']}
         style={styles.header}
       >
         <SafeAreaView edges={['top']}>
@@ -61,13 +61,13 @@ export default function VetLabScreen() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={refetch}
-            tintColor="#6B21A8"
-            colors={['#6B21A8']}
+            tintColor="#047857"
+            colors={['#047857']}
           />
         }
       >
         {isLoading ? (
-          <ActivityIndicator color="#6B21A8" size="large" style={{ marginTop: 60 }} />
+          <ActivityIndicator color="#047857" size="large" style={{ marginTop: 60 }} />
         ) : labRequests.length === 0 ? (
           <EmptyState
             icon="flask-outline"
@@ -85,7 +85,7 @@ export default function VetLabScreen() {
               >
                 <View style={styles.cardLeft}>
                   <View style={styles.flaskIcon}>
-                    <Ionicons name="flask" size={18} color="#6B21A8" />
+                    <Ionicons name="flask" size={18} color="#047857" />
                   </View>
                 </View>
 
@@ -133,7 +133,7 @@ export default function VetLabScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.sand[100] },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   header: {},
   headerInner: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
   },
-  wave: { height: 20, backgroundColor: colors.sand[100], borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  wave: { height: 20, backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
 
   scroll: { flex: 1 },
   scrollContent: { padding: spacing[5] },
@@ -161,11 +161,11 @@ const styles = StyleSheet.create({
   },
   cardLeft: {
     width: 56, alignItems: 'center', justifyContent: 'flex-start',
-    paddingTop: spacing[4], backgroundColor: '#F5F3FF',
+    paddingTop: spacing[4], backgroundColor: 'colors.brand[50]',
   },
   flaskIcon: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#EDE9FE',
+    backgroundColor: 'colors.brand[100]',
     alignItems: 'center', justifyContent: 'center',
   },
   cardBody: { flex: 1, padding: spacing[4] },
@@ -189,9 +189,9 @@ const styles = StyleSheet.create({
   },
   date: { fontSize: 11, color: colors.neutral[400] },
   startBtn: {
-    backgroundColor: '#EDE9FE', borderRadius: radius.full,
+    backgroundColor: 'colors.brand[100]', borderRadius: radius.full,
     paddingHorizontal: 12, paddingVertical: 5,
-    borderWidth: 1, borderColor: '#DDD6FE',
+    borderWidth: 1, borderColor: 'colors.brand[200]',
   },
-  startBtnText: { fontSize: 11, fontWeight: '700', color: '#6B21A8' },
+  startBtnText: { fontSize: 11, fontWeight: '700', color: '#047857' },
 });

@@ -112,12 +112,14 @@ export class ConsultationsService {
       throw new ForbiddenError('You do not have permission to update this consultation')
     }
 
+    const isVet = vetUserId === userId
+
     const updated = await this.prisma.consultation.update({
       where: { id: consultationId },
       data: {
         status: input.status,
-        prescription: input.prescription,
-        fee: input.fee,
+        // Prescription and fee are vet-only — farmers cannot self-prescribe or zero out fees
+        ...(isVet && { prescription: input.prescription, fee: input.fee }),
         ...(input.status === 'ACTIVE' && { startedAt: new Date() }),
         ...(input.status === 'CLOSED' && { endedAt: new Date() }),
       },

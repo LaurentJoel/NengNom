@@ -12,6 +12,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -135,9 +136,11 @@ export default function LoginScreen() {
           ]}
         >
           <View style={styles.logoRing}>
-            <View style={styles.logoBg}>
-              <Text style={styles.logoIcon}>🌿</Text>
-            </View>
+            <Image
+              source={require('../../assets/logo-circle.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.brand}>Neng-Nom</Text>
           <Text style={styles.tagline}>La santé animale à portée de main</Text>
@@ -263,13 +266,13 @@ export default function LoginScreen() {
               {/* Credentials hint */}
               <View style={styles.hintBox}>
                 <Ionicons name="information-circle-outline" size={14} color={colors.neutral[400]} />
-                <Text style={styles.hintText}>Éleveur: +237612345678 · Mot de passe: Password123!</Text>
+                <Text style={styles.hintText}>Éleveur: 691234567 · Vétérinaire: 698765432 · MDP: Password123!</Text>
               </View>
 
               {/* Footer */}
               <View style={styles.footer}>
                 <Text style={styles.footerText}>Pas encore de compte ? </Text>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/auth/register')}>
                   <Text style={styles.footerLink}>S'inscrire</Text>
                 </TouchableOpacity>
               </View>
@@ -320,37 +323,22 @@ const styles = StyleSheet.create({
   },
 
   // Logo
-  safeTop: { flex: 1, justifyContent: 'center' },
-  logoWrap: { alignItems: 'center', paddingTop: 20 },
+  safeTop: { flex: 1, justifyContent: 'center', paddingBottom: 80 },
+  logoWrap: { alignItems: 'center' },
   logoRing: {
-    width: 96, height: 96,
-    borderRadius: 48,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+    width: 118, height: 118, borderRadius: 59,
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF', marginBottom: 14, overflow: 'hidden',
   },
-  logoBg: {
-    width: 76, height: 76,
-    borderRadius: 38,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoIcon: { fontSize: 36 },
-  brand: {
-    fontWeight: '800',
-    fontSize: 34,
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
+  logoImage: { width: 110, height: 110 },
+  brand: { fontWeight: '800', fontSize: 32, color: '#FFFFFF', letterSpacing: 0.5, marginBottom: 4 },
   tagline: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(255,255,255,0.65)',
     letterSpacing: 0.3,
-    marginBottom: 20,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   dividerRow: {
     flexDirection: 'row',

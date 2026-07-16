@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { AuthService } from './auth.service.js'
 import { RegisterSchema, LoginSchema, RefreshTokenSchema } from './auth.schema.js'
 import { config } from '../../config/env.js'
+import { RATE_LIMITS } from '../../config/constants.js'
 
 export async function authRoutes(fastify: FastifyInstance) {
   const authService = new AuthService(
@@ -12,6 +13,9 @@ export async function authRoutes(fastify: FastifyInstance) {
   )
 
   fastify.post('/auth/register', {
+    config: {
+      rateLimit: { max: RATE_LIMITS.AUTH_REGISTER_MAX, timeWindow: RATE_LIMITS.AUTH_REGISTER_TIMEFRAME },
+    },
     schema: { tags: ['Auth'], summary: 'Register new account' },
   }, async (request, reply) => {
     const body = RegisterSchema.parse(request.body)
@@ -20,6 +24,9 @@ export async function authRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/auth/login', {
+    config: {
+      rateLimit: { max: RATE_LIMITS.AUTH_LOGIN_MAX, timeWindow: RATE_LIMITS.AUTH_LOGIN_TIMEFRAME },
+    },
     schema: { tags: ['Auth'], summary: 'Login' },
   }, async (request, reply) => {
     const body = LoginSchema.parse(request.body)
@@ -28,6 +35,9 @@ export async function authRoutes(fastify: FastifyInstance) {
   })
 
   fastify.post('/auth/refresh', {
+    config: {
+      rateLimit: { max: RATE_LIMITS.AUTH_LOGIN_MAX, timeWindow: RATE_LIMITS.AUTH_LOGIN_TIMEFRAME },
+    },
     schema: { tags: ['Auth'], summary: 'Refresh token' },
   }, async (request, reply) => {
     const body = RefreshTokenSchema.parse(request.body)
