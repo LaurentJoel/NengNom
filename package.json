@@ -2,6 +2,7 @@
   "name": "neng-nom-backend",
   "version": "1.0.0",
   "description": "Neng-Nom AgriTech Platform Backend API",
+  "packageManager": "pnpm@11.5.3",
   "type": "module",
   "private": true,
   "scripts": {
