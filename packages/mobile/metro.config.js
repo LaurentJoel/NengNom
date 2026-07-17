@@ -14,14 +14,13 @@ config.resolver.nodeModulesPaths = [
 ];
 
 // packages/web uses react@18.2.0 while packages/mobile uses react@19.0.0.
-// pnpm hoisted mode installs both; Metro (watching the whole monorepo) can
-// pick up the 18.x copy for navigation packages, causing two React instances
-// and "Cannot read property 'useMemo' of null" at runtime.
-//
-// resolveRequest intercepts EVERY require('react') in the bundle — unlike
-// extraNodeModules which is only a fallback — and forces the single hoisted
-// react@19.0.0 copy regardless of where in the tree the import originated.
-const reactRoot = path.resolve(workspaceRoot, 'node_modules');
+// With two conflicting versions, pnpm does NOT hoist react to root node_modules —
+// each workspace package gets its own copy. React@19 lives in
+// packages/mobile/node_modules/react (junction → .pnpm/react@19.0.0/...).
+// resolveRequest intercepts EVERY require('react') in the bundle and pins it
+// to the mobile package's react@19 copy, preventing Metro from picking up
+// the react@18 copy from packages/web when scanning watchFolders.
+const reactRoot = path.resolve(projectRoot, 'node_modules');
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'react') {
     return { type: 'sourceFile', filePath: path.join(reactRoot, 'react', 'index.js') };
