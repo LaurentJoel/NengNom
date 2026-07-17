@@ -13,17 +13,26 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-// Force a single React instance across the monorepo.
-// With pnpm hoisted mode, multiple copies of React can get bundled
-// (one from root node_modules, one from a nested transitive dep),
-// causing "Cannot read property 'useMemo' of null" at runtime.
-config.resolver.extraNodeModules = {
-  react: path.resolve(workspaceRoot, 'node_modules/react'),
-  'react-native': path.resolve(workspaceRoot, 'node_modules/react-native'),
-  'react-native/Libraries/Utilities/PolyfillFunctions': path.resolve(
-    workspaceRoot,
-    'node_modules/react-native/Libraries/Utilities/PolyfillFunctions',
-  ),
+// packages/web uses react@18.2.0 while packages/mobile uses react@19.0.0.
+// pnpm hoisted mode installs both; Metro (watching the whole monorepo) can
+// pick up the 18.x copy for navigation packages, causing two React instances
+// and "Cannot read property 'useMemo' of null" at runtime.
+//
+// resolveRequest intercepts EVERY require('react') in the bundle — unlike
+// extraNodeModules which is only a fallback — and forces the single hoisted
+// react@19.0.0 copy regardless of where in the tree the import originated.
+const reactRoot = path.resolve(workspaceRoot, 'node_modules');
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'react') {
+    return { type: 'sourceFile', filePath: path.join(reactRoot, 'react', 'index.js') };
+  }
+  if (moduleName === 'react/jsx-runtime') {
+    return { type: 'sourceFile', filePath: path.join(reactRoot, 'react', 'jsx-runtime.js') };
+  }
+  if (moduleName === 'react/jsx-dev-runtime') {
+    return { type: 'sourceFile', filePath: path.join(reactRoot, 'react', 'jsx-dev-runtime.js') };
+  }
+  return context.resolveRequest(context, moduleName, platform);
 };
 
 module.exports = config;

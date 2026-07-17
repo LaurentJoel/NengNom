@@ -1,5 +1,8 @@
 packages:
   - 'packages/*'
+overrides:
+  react: "19.0.0"
+  react-dom: "^19.0.0"
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
