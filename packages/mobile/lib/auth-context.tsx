@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { storage } from './storage';
-import { api } from './api';
+import { api, setForceLogoutCallback } from './api';
 
 export interface AuthUser {
   id: string;
@@ -42,8 +42,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  // Register force-logout callback so api.ts can reset auth state when refresh fails
+  useEffect(() => {
+    setForceLogoutCallback(async () => {
+      await storage.clear();
+      setToken(null);
+      setUser(null);
+    });
+  }, []);
+
   const login = useCallback(async (phone: string, password: string): Promise<AuthUser> => {
-    const res = await api.postPublic<{ accessToken: string; user: AuthUser }>(
+    const res = await api.postPublic<{ accessToken: string; refreshToken: string; user: AuthUser }>(
       '/auth/login',
       { phone, password },
     );
@@ -52,8 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(res.error?.message || 'Identifiants incorrects');
     }
 
-    const { accessToken, user: authUser } = res.data;
+    const { accessToken, refreshToken, user: authUser } = res.data;
     await storage.setToken(accessToken);
+    if (refreshToken) await storage.setRefreshToken(refreshToken);
     await storage.setUser(authUser);
     setToken(accessToken);
     setUser(authUser);

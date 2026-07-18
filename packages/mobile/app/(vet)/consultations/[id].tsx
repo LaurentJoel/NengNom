@@ -273,6 +273,11 @@ export default function VetChatScreen() {
               maxLength={1000}
             />
           </View>
+          {isActive && (
+            <TouchableOpacity onPress={joinVideoCall} style={styles.videoCallBtn} activeOpacity={0.85}>
+              <Ionicons name="videocam" size={20} color="#fff" />
+            </TouchableOpacity>
+          )}
           <Animated.View style={{ transform: [{ scale: sendScale }] }}>
             <TouchableOpacity
               onPress={handleSend}
@@ -387,4 +392,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brand[700], alignItems: 'center', justifyContent: 'center', ...shadow.md,
   },
   sendBtnDisabled: { backgroundColor: colors.neutral[300] },
+  videoCallBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center', ...shadow.md,
+  },
 });
