@@ -48,7 +48,7 @@ export default function FindVetScreen() {
   const createConsultation = useMutation({
     mutationFn: async () => {
       const body: any = { type: consultType };
-      if (selectedVet?.userId) body.vetId = selectedVet.userId;
+      if (selectedVet?.id) body.vetId = selectedVet.id;
       if (symptoms.trim())     body.symptomsDescription = symptoms.trim();
 
       const res = await api.post('/consultations', body);
