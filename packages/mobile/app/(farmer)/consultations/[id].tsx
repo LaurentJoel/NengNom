@@ -110,11 +110,12 @@ export default function FarmerChatScreen() {
   const joinVideoCall = async () => {
     try {
       const res = await api.get(`/consultations/${id}/video-room`);
-      if (!res.success) throw new Error('Impossible de rejoindre la vidéo');
+      if (!res.success) throw new Error(res.error?.message ?? 'Impossible de rejoindre la vidéo');
+      if (!res.data?.roomName) throw new Error('Nom de salle introuvable');
       const url = `https://meet.jit.si/${res.data.roomName}`;
       await Linking.openURL(url);
     } catch (e: any) {
-      Alert.alert('Erreur', e.message ?? 'Impossible de rejoindre la vidéo');
+      Alert.alert('Erreur vidéo', e.message ?? 'Impossible de rejoindre la vidéo');
     }
   };
 
