@@ -61,8 +61,8 @@ export default function FindVetScreen() {
       setModalVisible(false);
       setSymptoms('');
       setSelectedVet(null);
-      // Navigate to the new consultation chat
-      router.push(`/(farmer)/consultations/${newConsult.id}` as any);
+      // Redirect to payment before accessing the consultation
+      router.push(`/(farmer)/consultations/pay/${newConsult.id}` as any);
     },
     onError: (e: any) => Alert.alert('Erreur', e.message),
   });

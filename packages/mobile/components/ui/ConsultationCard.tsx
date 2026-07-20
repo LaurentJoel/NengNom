@@ -7,6 +7,8 @@ interface Consultation {
   id: string;
   status: 'PENDING' | 'ACTIVE' | 'CLOSED' | 'CANCELLED';
   type: 'CHAT' | 'VOICE' | 'VIDEO' | 'EMERGENCY';
+  paymentStatus?: 'UNPAID' | 'PAID' | 'FAILED';
+  fee?: number | string | null;
   symptomsDescription?: string;
   createdAt: string;
   vet?: { user?: { fullName?: string } };
@@ -34,8 +36,9 @@ export function ConsultationCard({ consultation, viewAs, onPress }: Props) {
     day: '2-digit', month: 'short',
   });
 
-  const isActive  = consultation.status === 'ACTIVE';
-  const isPending = consultation.status === 'PENDING';
+  const isActive   = consultation.status === 'ACTIVE';
+  const isPending  = consultation.status === 'PENDING';
+  const isUnpaid   = consultation.paymentStatus === 'UNPAID' || consultation.paymentStatus == null;
 
   return (
     <TouchableOpacity
@@ -73,10 +76,17 @@ export function ConsultationCard({ consultation, viewAs, onPress }: Props) {
 
         {/* Bottom row */}
         <View style={styles.bottomRow}>
-          <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
-            <View style={[styles.statusDot, { backgroundColor: cfg.dot }]} />
-            <Text style={[styles.statusText, { color: cfg.text }]}>{cfg.label}</Text>
-          </View>
+          {isUnpaid && viewAs === 'FARMER' ? (
+            <View style={styles.payPill}>
+              <Ionicons name="lock-closed" size={10} color="#92400E" />
+              <Text style={styles.payPillText}>Paiement requis</Text>
+            </View>
+          ) : (
+            <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
+              <View style={[styles.statusDot, { backgroundColor: cfg.dot }]} />
+              <Text style={[styles.statusText, { color: cfg.text }]}>{cfg.label}</Text>
+            </View>
+          )}
           <Ionicons name="chevron-forward" size={14} color={colors.neutral[300]} />
         </View>
       </View>
@@ -161,4 +171,10 @@ const styles = StyleSheet.create({
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 11, fontWeight: '700' },
+  payPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.full,
+    backgroundColor: '#FEF3C7',
+  },
+  payPillText: { fontSize: 11, fontWeight: '700', color: '#92400E' },
 });

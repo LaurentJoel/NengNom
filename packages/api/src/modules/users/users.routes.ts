@@ -81,6 +81,21 @@ export async function usersRoutes(fastify: FastifyInstance) {
   })
 
   /**
+   * PATCH /users/push-token
+   * Save Expo push notification token
+   */
+  fastify.patch('/users/push-token', {
+    preHandler: [fastify.authenticate],
+    schema: { tags: ['Users'], summary: 'Register push notification token' },
+  }, async (request, reply) => {
+    const userId = (request.user as any).id
+    const { pushToken } = request.body as { pushToken: string }
+    if (!pushToken) return reply.status(400).send({ error: 'pushToken required' })
+    await fastify.prisma.user.update({ where: { id: userId }, data: { pushToken } })
+    return reply.send({ success: true })
+  })
+
+  /**
    * PUT /users/profile
    * Update current user profile
    */

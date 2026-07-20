@@ -117,7 +117,14 @@ export default function FarmerConsultationsScreen() {
               key={c.id}
               consultation={c}
               viewAs="FARMER"
-              onPress={() => router.push(`/(farmer)/consultations/${c.id}` as any)}
+              onPress={() => {
+                const unpaid = c.paymentStatus === 'UNPAID' || c.paymentStatus == null;
+                if (unpaid) {
+                  router.push(`/(farmer)/consultations/pay/${c.id}` as any);
+                } else {
+                  router.push(`/(farmer)/consultations/${c.id}` as any);
+                }
+              }}
             />
           ))
         )}

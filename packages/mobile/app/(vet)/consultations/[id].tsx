@@ -9,7 +9,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Linking } from 'react-native';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { getSocket } from '@/lib/socket';
@@ -70,14 +69,14 @@ export default function VetChatScreen() {
       qc.invalidateQueries({ queryKey: ['consultation', id] });
     };
 
-    const onVideoCallStarted = ({ callerUserId, callerName, roomName }: { callerUserId: string; callerName: string; roomName: string }) => {
+    const onVideoCallStarted = ({ callerUserId, callerName }: { callerUserId: string; callerName: string; roomName: string }) => {
       if (callerUserId === user?.id) return;
       Alert.alert(
         'Appel vidéo',
         `${callerName} a démarré un appel vidéo. Rejoindre maintenant ?`,
         [
           { text: 'Plus tard', style: 'cancel' },
-          { text: 'Rejoindre', onPress: () => openVideoRoom(roomName) },
+          { text: 'Rejoindre', onPress: () => router.push(`/(vet)/consultations/video/${id}` as any) },
         ]
       );
     };
@@ -147,21 +146,8 @@ export default function VetChatScreen() {
     ]);
   };
 
-  const openVideoRoom = (roomName: string) => {
-    const displayName = encodeURIComponent(user?.fullName ?? 'Vétérinaire');
-    const url = `https://meet.jit.si/${roomName}#userInfo.displayName=${displayName}&config.prejoinPageEnabled=false&config.disableDeepLinking=true`;
-    Linking.openURL(url);
-  };
-
-  const joinVideoCall = async () => {
-    try {
-      const res = await api.get(`/consultations/${id}/video-room`);
-      if (!res.success) throw new Error(res.error?.message ?? 'Impossible de rejoindre la vidéo');
-      if (!res.data?.roomName) throw new Error('Nom de salle introuvable');
-      openVideoRoom(res.data.roomName);
-    } catch (e: any) {
-      Alert.alert('Erreur vidéo', e.message ?? 'Impossible de rejoindre la vidéo');
-    }
+  const joinVideoCall = () => {
+    router.push(`/(vet)/consultations/video/${id}` as any);
   };
 
   const statusCfg  = statusConfig[(consultation?.status as keyof typeof statusConfig) ?? 'PENDING'];

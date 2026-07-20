@@ -32,6 +32,12 @@ enum ConsultationStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+}
+
 enum LabTestType {
   DISEASE_DIAGNOSIS
   PARASITOLOGY
@@ -79,6 +85,7 @@ model User {
   quarter      String?
   isVerified   Boolean   @default(false) @map("is_verified")
   isActive     Boolean   @default(true) @map("is_active")
+  pushToken    String?   @map("push_token")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
@@ -140,6 +147,8 @@ model Consultation {
   vet                 VetProfile?        @relation(fields: [vetId], references: [id])
   type                ConsultationType
   status              ConsultationStatus @default(PENDING)
+  paymentStatus       PaymentStatus      @default(UNPAID) @map("payment_status")
+  paymentRef          String?            @map("payment_ref")
   symptomsDescription String?            @map("symptoms_description") @db.Text
   mediaUrls           String[]           @map("media_urls")
   prescription        String?            @db.Text

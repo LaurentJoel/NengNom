@@ -282,7 +282,14 @@ export default function FarmerDashboard() {
                 key={c.id}
                 consultation={c}
                 viewAs="FARMER"
-                onPress={() => router.push(`/(farmer)/consultations/${c.id}` as any)}
+                onPress={() => {
+                  const unpaid = (c as any).paymentStatus === 'UNPAID' || (c as any).paymentStatus == null;
+                  if (unpaid) {
+                    router.push(`/(farmer)/consultations/pay/${c.id}` as any);
+                  } else {
+                    router.push(`/(farmer)/consultations/${c.id}` as any);
+                  }
+                }}
               />
             ))
           )}

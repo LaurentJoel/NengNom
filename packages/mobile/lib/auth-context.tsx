@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { storage } from './storage';
 import { api, setForceLogoutCallback } from './api';
+import { registerPushToken } from './notifications';
 
 export interface AuthUser {
   id: string;
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await storage.setUser(authUser);
     setToken(accessToken);
     setUser(authUser);
+    registerPushToken().catch(() => {});
     return authUser;
   }, []);
 

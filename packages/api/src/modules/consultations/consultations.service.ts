@@ -5,6 +5,13 @@ import type { CreateConsultationInput, UpdateConsultationInput, CreateMessageInp
 
 const log = createLogger('consultations-service')
 
+const CONSULTATION_FEES: Record<string, number> = {
+  CHAT: 2000,
+  VIDEO: 5000,
+  VOICE: 3000,
+  EMERGENCY: 3000,
+}
+
 export class ConsultationsService {
   constructor(private prisma: PrismaClient) {}
 
@@ -35,6 +42,7 @@ export class ConsultationsService {
         type: input.type,
         symptomsDescription: input.symptomsDescription,
         mediaUrls: input.mediaUrls ?? [],
+        fee: CONSULTATION_FEES[input.type] ?? 2000,
       },
       include: {
         farmer: { include: { user: true } },
@@ -87,7 +95,7 @@ export class ConsultationsService {
 
     const [consultations, total] = await Promise.all([
       this.prisma.consultation.findMany({
-        where: { vetId },
+        where: { vetId, paymentStatus: 'PAID' },
         include: {
           farmer: { include: { user: true } },
           messages: { take: 1, orderBy: { sentAt: 'desc' } },
@@ -96,7 +104,7 @@ export class ConsultationsService {
         take: limit,
         skip: offset,
       }),
-      this.prisma.consultation.count({ where: { vetId } }),
+      this.prisma.consultation.count({ where: { vetId, paymentStatus: 'PAID' } }),
     ])
 
     return { consultations, total }

@@ -8,6 +8,7 @@ import {
 } from './consultations.schema.js'
 import { ForbiddenError } from '../../lib/errors.js'
 import { config } from '../../config/env.js'
+import { sendPushNotification } from '../../lib/push.js'
 
 /**
  * Consultations routes
@@ -111,6 +112,55 @@ export async function consultationsRoutes(fastify: FastifyInstance) {
   )
 
   /**
+   * POST /consultations/:id/pay
+   * Mock payment — marks the consultation as PAID and notifies participants.
+   */
+  fastify.post<{ Params: { id: string } }>(
+    '/consultations/:id/pay',
+    {
+      preHandler: [fastify.authorize('FARMER')],
+      schema: { tags: ['Consultations'], summary: 'Pay for a consultation (mock)' },
+    },
+    async (request, reply) => {
+      const userId = (request.user as any).id
+      const consultation = await service.getConsultation(request.params.id)
+
+      if (consultation.farmer?.user?.id !== userId) {
+        throw new ForbiddenError('You are not the farmer of this consultation')
+      }
+
+      if ((consultation as any).paymentStatus === 'PAID') {
+        return reply.send(consultation)
+      }
+
+      const updated = await fastify.prisma.consultation.update({
+        where: { id: request.params.id },
+        data: { paymentStatus: 'PAID' },
+        include: {
+          farmer: { include: { user: true } },
+          vet: { include: { user: true } },
+        },
+      })
+
+      fastify.io?.to(`consultation:${request.params.id}`).emit('payment-confirmed', {
+        consultationId: request.params.id,
+      })
+
+      // Notify vet that a paid consultation is waiting
+      const vetToken = (updated.vet?.user as any)?.pushToken
+      const farmerName = updated.farmer?.user?.fullName ?? 'Un éleveur'
+      await sendPushNotification(
+        vetToken,
+        'Nouvelle consultation payée',
+        `${farmerName} a réglé une consultation. Connectez-vous pour répondre.`,
+        { consultationId: request.params.id },
+      )
+
+      return reply.send(updated)
+    }
+  )
+
+  /**
    * POST /consultations/:id/messages
    * Send message in consultation
    */
@@ -122,9 +172,35 @@ export async function consultationsRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       const userId = (request.user as any).id
+      const consultation = await service.getConsultation(request.params.id)
+
+      if ((consultation as any).paymentStatus !== 'PAID') {
+        return reply.status(402).send({
+          error: { code: 'PAYMENT_REQUIRED', message: 'Veuillez régler la consultation avant d\'envoyer des messages.' },
+        })
+      }
+
       const body = CreateMessageSchema.parse(request.body)
       const result = await service.addMessage(request.params.id, userId, body)
       fastify.io?.to(`consultation:${request.params.id}`).emit('new-message', result)
+
+      // Push notification to the other participant
+      const farmerUserId = consultation.farmer?.user?.id
+      const isFromFarmer = userId === farmerUserId
+      const recipientToken = isFromFarmer
+        ? (consultation.vet?.user as any)?.pushToken
+        : (consultation.farmer?.user as any)?.pushToken
+      const senderName = isFromFarmer
+        ? (consultation.farmer?.user?.fullName ?? 'Éleveur')
+        : (consultation.vet?.user?.fullName ?? 'Vétérinaire')
+
+      await sendPushNotification(
+        recipientToken,
+        senderName,
+        body.content ?? 'Nouveau message',
+        { consultationId: request.params.id },
+      )
+
       return reply.status(201).send(result)
     }
   )
@@ -148,6 +224,12 @@ export async function consultationsRoutes(fastify: FastifyInstance) {
       const vetUserId    = consultation.vet?.user?.id
       if (farmerUserId !== userId && vetUserId !== userId) {
         throw new ForbiddenError('You are not a participant of this consultation')
+      }
+
+      if ((consultation as any).paymentStatus !== 'PAID') {
+        return reply.status(402).send({
+          error: { code: 'PAYMENT_REQUIRED', message: 'Veuillez régler la consultation avant de rejoindre la vidéo.' },
+        })
       }
 
       const roomSecret = config.VIDEO_ROOM_SECRET ?? config.JWT_ACCESS_SECRET
