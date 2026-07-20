@@ -156,6 +156,15 @@ export async function consultationsRoutes(fastify: FastifyInstance) {
         .digest('hex')
         .slice(0, 32)
 
+      const callerName = userId === farmerUserId
+        ? (consultation.farmer?.user?.fullName ?? 'Éleveur')
+        : (consultation.vet?.user?.fullName ?? 'Vétérinaire')
+      fastify.io?.to(`consultation:${request.params.id}`).emit('video-call-started', {
+        callerUserId: userId,
+        callerName,
+        roomName,
+      })
+
       return reply.send({ roomName })
     }
   )

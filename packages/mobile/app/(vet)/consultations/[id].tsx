@@ -70,12 +70,26 @@ export default function VetChatScreen() {
       qc.invalidateQueries({ queryKey: ['consultation', id] });
     };
 
+    const onVideoCallStarted = ({ callerUserId, callerName, roomName }: { callerUserId: string; callerName: string; roomName: string }) => {
+      if (callerUserId === user?.id) return;
+      Alert.alert(
+        'Appel vidéo',
+        `${callerName} a démarré un appel vidéo. Rejoindre maintenant ?`,
+        [
+          { text: 'Plus tard', style: 'cancel' },
+          { text: 'Rejoindre', onPress: () => openVideoRoom(roomName) },
+        ]
+      );
+    };
+
     socket.on('new-message', onNewMessage);
     socket.on('consultation-updated', onConsultationUpdated);
+    socket.on('video-call-started', onVideoCallStarted);
 
     return () => {
       socket.off('new-message', onNewMessage);
       socket.off('consultation-updated', onConsultationUpdated);
+      socket.off('video-call-started', onVideoCallStarted);
       socket.emit('leave-consultation', id);
     };
   }, [token, id]);
@@ -133,13 +147,18 @@ export default function VetChatScreen() {
     ]);
   };
 
+  const openVideoRoom = (roomName: string) => {
+    const displayName = encodeURIComponent(user?.fullName ?? 'Vétérinaire');
+    const url = `https://meet.jit.si/${roomName}#userInfo.displayName=${displayName}&config.prejoinPageEnabled=false&config.disableDeepLinking=true`;
+    Linking.openURL(url);
+  };
+
   const joinVideoCall = async () => {
     try {
       const res = await api.get(`/consultations/${id}/video-room`);
       if (!res.success) throw new Error(res.error?.message ?? 'Impossible de rejoindre la vidéo');
       if (!res.data?.roomName) throw new Error('Nom de salle introuvable');
-      const url = `https://meet.jit.si/${res.data.roomName}`;
-      await Linking.openURL(url);
+      openVideoRoom(res.data.roomName);
     } catch (e: any) {
       Alert.alert('Erreur vidéo', e.message ?? 'Impossible de rejoindre la vidéo');
     }
