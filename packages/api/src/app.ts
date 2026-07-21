@@ -38,6 +38,20 @@ export async function createApp(): Promise<FastifyInstance> {
   await fastify.register(swaggerPlugin)
   await fastify.register(errorHandlerPlugin)
 
+  // Allow empty bodies with Content-Type: application/json (mobile clients always set the header)
+  fastify.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
+    if (!body || (body as string).trim() === '') {
+      done(null, {})
+      return
+    }
+    try {
+      done(null, JSON.parse(body as string))
+    } catch (err: any) {
+      err.statusCode = 400
+      done(err, undefined)
+    }
+  })
+
   fastify.get('/health', async (_request, reply) => {
     return reply.send({
       status: 'healthy',
