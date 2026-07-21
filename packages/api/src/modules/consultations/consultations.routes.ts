@@ -137,9 +137,19 @@ export async function consultationsRoutes(fastify: FastifyInstance) {
         return reply.send(consultation)
       }
 
+      // Paying opens the consultation. Without this it stays PENDING until the
+      // vet happens to send a message, and the client gates chat/video controls
+      // on ACTIVE — so a farmer who paid for a VIDEO consultation could not
+      // start the call they just bought. Only PENDING is promoted; a CLOSED or
+      // CANCELLED consultation must not be reopened by a late payment.
+      const opensConsultation = consultation.status === 'PENDING'
+
       const updated = await fastify.prisma.consultation.update({
         where: { id: request.params.id },
-        data: { paymentStatus: 'PAID' },
+        data: {
+          paymentStatus: 'PAID',
+          ...(opensConsultation && { status: 'ACTIVE', startedAt: new Date() }),
+        },
         include: {
           farmer: { include: { user: true } },
           vet: { include: { user: true } },
@@ -149,6 +159,12 @@ export async function consultationsRoutes(fastify: FastifyInstance) {
       fastify.io?.to(`consultation:${request.params.id}`).emit('payment-confirmed', {
         consultationId: request.params.id,
       })
+
+      if (opensConsultation) {
+        fastify.io?.to(`consultation:${request.params.id}`).emit('consultation-updated', {
+          status: updated.status,
+        })
+      }
 
       // Notify vet that a paid consultation is waiting
       const vetToken = (updated.vet?.user as any)?.pushToken
