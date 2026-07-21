@@ -101,13 +101,12 @@ export default function AIChatScreen() {
         { id: `a-${Date.now()}`, role: 'assistant', text: reply, timestamp: new Date() },
       ]);
     } catch {
-      // Fallback: suggest generating new AI analysis
       setMessages((prev) => [
         ...prev,
         {
           id: `a-${Date.now()}`,
           role: 'assistant',
-          text: `Merci pour votre question sur "${text.slice(0, 40)}${text.length > 40 ? '…' : ''}". Je vous recommande de consulter l'onglet Suggestions IA pour des conseils personnalisés basés sur les données de votre ferme. Vous pouvez aussi appuyer sur ✨ pour générer de nouveaux conseils.`,
+          text: `Désolé, je n'ai pas pu vous répondre. Vérifiez votre connexion et réessayez.`,
           timestamp: new Date(),
         },
       ]);
@@ -212,8 +211,9 @@ export default function AIChatScreen() {
           <View style={styles.quickSuggestions}>
             {[
               'Mes poules sont malades 🐔',
-              'Conseils nutrition du jour',
+              'Comment trouver un vétérinaire ?',
               'Prochaine vaccination ?',
+              'Comment voir mes analyses ?',
             ].map((q) => (
               <TouchableOpacity
                 key={q}
