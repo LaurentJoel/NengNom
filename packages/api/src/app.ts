@@ -38,7 +38,11 @@ export async function createApp(): Promise<FastifyInstance> {
   await fastify.register(swaggerPlugin)
   await fastify.register(errorHandlerPlugin)
 
-  // Allow empty bodies with Content-Type: application/json (mobile clients always set the header)
+  // Remove Fastify's built-in JSON parser then re-add one that accepts empty bodies.
+  // Mobile clients always send Content-Type:application/json even with no body;
+  // the default parser rejects that. removeContentTypeParser is required first —
+  // addContentTypeParser alone does NOT override the built-in in Fastify 4.x.
+  fastify.removeContentTypeParser('application/json')
   fastify.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
     if (!body || (body as string).trim() === '') {
       done(null, {})
