@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { createLogger } from '../../lib/logger.js'
 import { NotFoundError } from '../../lib/errors.js'
+import { resolveFarmerProfileId } from '../../lib/profile-ids.js'
 import type { CreateHealthEventInput, UpdateHealthEventInput } from './health-events.schema.js'
 
 const log = createLogger('health-events-service')
@@ -9,12 +10,7 @@ export class HealthEventsService {
   constructor(private prisma: PrismaClient) {}
 
   private async getFarmerProfileId(userId: string): Promise<string> {
-    const profile = await this.prisma.farmerProfile.findUnique({
-      where: { userId },
-      select: { id: true },
-    })
-    if (!profile) throw new NotFoundError('Farmer profile', userId)
-    return profile.id
+    return resolveFarmerProfileId(this.prisma, userId)
   }
 
   async createEvent(userId: string, input: CreateHealthEventInput) {

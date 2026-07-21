@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client'
 import { createLogger } from '../../lib/logger.js'
 import { NotFoundError, ConflictError } from '../../lib/errors.js'
+import { resolveFarmerProfileId } from '../../lib/profile-ids.js'
+import { cached, cacheDel, cacheKeys, CACHE_TTL } from '../../lib/cache.js'
 import type { CreateFarmRecordInput, UpdateFarmRecordInput } from './farm-records.schema.js'
 
 const log = createLogger('farm-records-service')
@@ -8,13 +10,15 @@ const log = createLogger('farm-records-service')
 export class FarmRecordsService {
   constructor(private prisma: PrismaClient) {}
 
+  /** Stats are cached per month, so a write only invalidates the month it touched. */
+  private async invalidateStatsFor(farmerId: string, recordDate: Date): Promise<void> {
+    await cacheDel(
+      cacheKeys.farmStats(farmerId, recordDate.getFullYear(), recordDate.getMonth() + 1)
+    )
+  }
+
   private async getFarmerProfileId(userId: string): Promise<string> {
-    const profile = await this.prisma.farmerProfile.findUnique({
-      where: { userId },
-      select: { id: true },
-    })
-    if (!profile) throw new NotFoundError('Farmer profile', userId)
-    return profile.id
+    return resolveFarmerProfileId(this.prisma, userId)
   }
 
   async createRecord(userId: string, input: CreateFarmRecordInput) {
@@ -41,6 +45,7 @@ export class FarmRecordsService {
     })
 
     log.info('Farm record created', { recordId: record.id, farmerId })
+    await this.invalidateStatsFor(farmerId, record.recordDate)
     return record
   }
 
@@ -85,6 +90,7 @@ export class FarmRecordsService {
     })
 
     log.info('Farm record updated', { recordId, farmerId })
+    await this.invalidateStatsFor(farmerId, updated.recordDate)
     return updated
   }
 
@@ -96,10 +102,18 @@ export class FarmRecordsService {
 
     await this.prisma.farmRecord.delete({ where: { id: recordId } })
     log.info('Farm record deleted', { recordId, farmerId })
+    await this.invalidateStatsFor(farmerId, record.recordDate)
   }
 
   async getMonthlyStats(userId: string, year: number, month: number) {
     const farmerId = await this.getFarmerProfileId(userId)
+
+    return cached(cacheKeys.farmStats(farmerId, year, month), CACHE_TTL.FARM_STATS, () =>
+      this.loadMonthlyStats(farmerId, year, month)
+    )
+  }
+
+  private async loadMonthlyStats(farmerId: string, year: number, month: number) {
     const startDate = new Date(year, month - 1, 1)
     const endDate = new Date(year, month, 0)
 

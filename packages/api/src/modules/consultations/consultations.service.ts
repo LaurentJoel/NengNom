@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { createLogger } from '../../lib/logger.js'
 import { NotFoundError, ForbiddenError } from '../../lib/errors.js'
+import { resolveFarmerProfileId, resolveVetProfileId } from '../../lib/profile-ids.js'
 import type { CreateConsultationInput, UpdateConsultationInput, CreateMessageInput } from './consultations.schema.js'
 
 const log = createLogger('consultations-service')
@@ -16,20 +17,11 @@ export class ConsultationsService {
   constructor(private prisma: PrismaClient) {}
 
   private async getFarmerProfileId(userId: string): Promise<string> {
-    const profile = await this.prisma.farmerProfile.findUnique({
-      where: { userId },
-      select: { id: true },
-    })
-    if (!profile) throw new NotFoundError('Farmer profile', userId)
-    return profile.id
+    return resolveFarmerProfileId(this.prisma, userId)
   }
 
   private async getVetProfileId(userId: string): Promise<string | null> {
-    const profile = await this.prisma.vetProfile.findUnique({
-      where: { userId },
-      select: { id: true },
-    })
-    return profile?.id ?? null
+    return resolveVetProfileId(this.prisma, userId)
   }
 
   async createConsultation(userId: string, input: CreateConsultationInput) {

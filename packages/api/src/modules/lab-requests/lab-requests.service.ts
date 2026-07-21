@@ -1,6 +1,7 @@
 import { PrismaClient, LabStatus, LabTestType } from '@prisma/client'
 import { createLogger } from '../../lib/logger.js'
 import { NotFoundError } from '../../lib/errors.js'
+import { resolveFarmerProfileId } from '../../lib/profile-ids.js'
 import type { CreateLabRequestInput, UpdateLabRequestInput } from './lab-requests.schema.js'
 
 const log = createLogger('lab-requests-service')
@@ -9,12 +10,7 @@ export class LabRequestsService {
   constructor(private prisma: PrismaClient) {}
 
   private async getFarmerProfileId(userId: string): Promise<string> {
-    const profile = await this.prisma.farmerProfile.findUnique({
-      where: { userId },
-      select: { id: true },
-    })
-    if (!profile) throw new NotFoundError('Farmer profile', userId)
-    return profile.id
+    return resolveFarmerProfileId(this.prisma, userId)
   }
 
   async createRequest(userId: string, input: CreateLabRequestInput) {
