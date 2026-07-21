@@ -119,7 +119,11 @@ export async function consultationsRoutes(fastify: FastifyInstance) {
     '/consultations/:id/pay',
     {
       preHandler: [fastify.authorize('FARMER')],
-      schema: { tags: ['Consultations'], summary: 'Pay for a consultation (mock)' },
+      schema: {
+        tags: ['Consultations'],
+        summary: 'Pay for a consultation (mock)',
+        body: { type: 'object', properties: {} },
+      },
     },
     async (request, reply) => {
       const userId = (request.user as any).id

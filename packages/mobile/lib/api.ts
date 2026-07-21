@@ -42,8 +42,9 @@ async function request<T = any>(
 ): Promise<ApiResponse<T>> {
   const resolvedToken = token ?? (await storage.getToken());
 
+  const hasBody = options.body !== undefined && options.body !== null;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
     ...(resolvedToken ? { Authorization: `Bearer ${resolvedToken}` } : {}),
     ...(options.headers as Record<string, string>),
   };
